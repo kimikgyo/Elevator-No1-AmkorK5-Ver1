@@ -48,6 +48,7 @@ namespace Elevator.Services
             bool upDriving = basicCondition && protocolDto.Dir == 1 && protocolDto.Door == 3;
             bool downDriving = basicCondition && protocolDto.Dir == 2 && protocolDto.Door == 3;
 
+            //기본 상태확인
             switch (protocolDto.Floor)
             {
                 case 1:
@@ -227,8 +228,15 @@ namespace Elevator.Services
                 if (changeState)
                 {
                     CommandStateUpdate(nameof(CommandState.EXECUTING));
-                    if (command.name == nameof(CommandAction.AGVMODE) || command.name == nameof(CommandAction.NOTAGVMODE))
+                    if (command.actionName == nameof(CommandAction.AGVMODE))
                     {
+                        elevatorModeUpdate(nameof(Mode.AGVMODE));
+                        CommandStateUpdate(nameof(CommandState.COMPLETED));
+
+                    }
+                    else if (command.actionName == nameof(CommandAction.NOTAGVMODE))
+                    {
+                        elevatorModeUpdate(nameof(Mode.NOTAGVMODE));
                         //기본상태값에 프로토콜이없음.
                         CommandStateUpdate(nameof(CommandState.COMPLETED));
                     }

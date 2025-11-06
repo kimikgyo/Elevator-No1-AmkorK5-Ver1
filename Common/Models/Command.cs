@@ -13,12 +13,7 @@ namespace Common.Models
         DOOROPEN,
         DOORCLOSE,
         DESTINATIONFLOOR,
-    }
-
-    public enum Mode
-    {
-        AGVMODE,
-        NOTAGVMODE
+        ELEVATORMODE
     }
 
     public enum CommandAction
@@ -65,9 +60,11 @@ namespace Common.Models
         [JsonPropertyOrder(6)] public string WorkerId { get; set; }
         [JsonPropertyOrder(7)] public string actionName { get; set; }
         [JsonPropertyOrder(8)] public string parametersjson { get; set; }
+
         //[JsonPropertyOrder(9)] public string preReportsjson { get; set; }
         //[JsonPropertyOrder(10)] public string postReportsjson { get; set; }
         [JsonPropertyOrder(11)] public DateTime createdAt { get; set; }
+
         [JsonPropertyOrder(12)] public DateTime? updatedAt { get; set; }
         [JsonPropertyOrder(13)] public DateTime? finishedAt { get; set; }
 

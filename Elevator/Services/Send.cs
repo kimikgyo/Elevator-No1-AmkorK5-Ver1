@@ -1,5 +1,4 @@
 ﻿using Common.Models;
-using System.Net.Sockets;
 using System.Text;
 
 namespace Elevator.Services
@@ -21,7 +20,7 @@ namespace Elevator.Services
             return SendingServerStream(sendData);
         }
 
-        private bool test = false;
+        private bool ModeCheck = false;
 
         private string SendingElevator_Control()
         {
@@ -89,7 +88,30 @@ namespace Elevator.Services
             else
             {
                 //Status
-                SendMsg = "Cmd=10&AId=1&DId=1";
+                if (!ModeCheck)
+                {
+                    SendMsg = "Cmd=10&AId=1&DId=1";
+                    ModeCheck = true;
+                }
+                else
+                {
+                    var status = _repository.ElevatorStatus.GetAll().FirstOrDefault();
+                    if (status != null)
+                    {
+                        switch (status.mode)
+                        {
+                            case nameof(Mode.AGVMODE):
+                                SendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=01&Dest=00";
+                                ModeCheck = false;
+                                break;
+
+                            case nameof(Mode.NOTAGVMODE):
+                                SendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=00&Dest=00";
+                                ModeCheck = false;
+                                break;
+                        }
+                    }
+                }
             }
 
             return SendMsg;

@@ -165,6 +165,19 @@ namespace Elevator.Services
             EventLogger.Info(message + "\n[StackTrace]\n" + ex.StackTrace);
         }
 
+        private void elevatorModeUpdate(string mode)
+        {
+            var elevator = _repository.ElevatorStatus.GetAll().FirstOrDefault();
+            if (elevator != null && elevator.mode != mode)
+            {
+                elevator.mode = mode;
+                elevator.updateAt = DateTime.Now;
+                _repository.ElevatorStatus.Update(elevator);
+                _mqttQueue.MqttPublishMessage(TopicType.No_1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
+            }
+        }
+
+
         private void elevatorStateUpdate(string state)
         {
             var elevator = _repository.ElevatorStatus.GetAll().FirstOrDefault();
@@ -174,6 +187,7 @@ namespace Elevator.Services
                 if (elevator.state != nameof(State.CONNECT) && state == nameof(State.DISCONNECT)) return;
 
                 elevator.state = state;
+                elevator.updateAt = DateTime.Now;
                 _repository.ElevatorStatus.Update(elevator);
                 _mqttQueue.MqttPublishMessage(TopicType.No_1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
             }
@@ -184,6 +198,7 @@ namespace Elevator.Services
             this.elevator = new Status
             {
                 id = ConfigData.ElevatorSetting.id,
+                mode = nameof(Mode.NOTAGVMODE),
                 name = "Elevator",
                 state = nameof(State.DISCONNECT),
                 createAt = DateTime.Now,

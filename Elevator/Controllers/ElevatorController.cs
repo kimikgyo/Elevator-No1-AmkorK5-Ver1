@@ -5,6 +5,7 @@ using Elevator1.Mappings.interfaces;
 using Elevator1.MQTTs.interfaces;
 using log4net;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Razor.TagHelpers;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -101,11 +102,20 @@ namespace Elevator.Controllers
                     actionName = nameof(CommandAction.DOORCLOSE);
                     break;
 
-                case nameof(SubType.SOURCEFLOOR):
-                    var sourceparameter1 = addRequestDto.parameters.FirstOrDefault();
-                    if (sourceparameter1 != null)
+                case nameof(SubType.ELEVATORMODE):
+                    var mode = addRequestDto.parameters.FirstOrDefault();
+                    if(mode!=null)
                     {
-                        actionName = CreateActionFloor(sourceparameter1.key, sourceparameter1.value);
+                        if(mode.value == nameof(CommandAction.AGVMODE)) actionName = nameof(CommandAction.AGVMODE);
+                        else if(mode.value == nameof(CommandAction.NOTAGVMODE)) actionName = nameof(CommandAction.NOTAGVMODE);
+                    }
+                    break;
+
+                case nameof(SubType.SOURCEFLOOR):
+                    var sourceparameter = addRequestDto.parameters.FirstOrDefault();
+                    if (sourceparameter != null)
+                    {
+                        actionName = CreateActionFloor(sourceparameter.key, sourceparameter.value);
                     }
                     break;
 
