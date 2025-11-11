@@ -59,7 +59,7 @@ namespace Common.Models
         [JsonPropertyOrder(5)] public string state { get; set; }
         [JsonPropertyOrder(6)] public string WorkerId { get; set; }
         [JsonPropertyOrder(7)] public string actionName { get; set; }
-        [JsonPropertyOrder(8)] public string parametersjson { get; set; }
+        [JsonPropertyOrder(8)] public string parameterJson { get; set; }
 
         //[JsonPropertyOrder(9)] public string preReportsjson { get; set; }
         //[JsonPropertyOrder(10)] public string postReportsjson { get; set; }
@@ -78,7 +78,7 @@ namespace Common.Models
                $",state = {state,-5}" +
                $",WorkerId = {WorkerId,-5}" +
                $",actionName = {actionName,-5}" +
-               $",parametersjson = {parametersjson,-5}" +
+               $",parameterJson = {parameterJson,-5}" +
                //$",preReportsjson = {preReportsjson,-5}" +
                //$",postReportsjson = {postReportsjson,-5}" +
                $",createdAt = {createdAt,-5}" +

@@ -173,7 +173,7 @@ namespace Elevator.Services
                 elevator.mode = mode;
                 elevator.updateAt = DateTime.Now;
                 _repository.ElevatorStatus.Update(elevator);
-                _mqttQueue.MqttPublishMessage(TopicType.No_1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
+                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
             }
         }
 
@@ -189,7 +189,7 @@ namespace Elevator.Services
                 elevator.state = state;
                 elevator.updateAt = DateTime.Now;
                 _repository.ElevatorStatus.Update(elevator);
-                _mqttQueue.MqttPublishMessage(TopicType.No_1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
+                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
             }
         }
 
@@ -204,7 +204,7 @@ namespace Elevator.Services
                 createAt = DateTime.Now,
             };
             _repository.ElevatorStatus.Add(elevator);
-            _mqttQueue.MqttPublishMessage(TopicType.No_1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
+            _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
         }
 
         private void CommandStateUpdate(string state)
@@ -223,7 +223,7 @@ namespace Elevator.Services
                     command.finishedAt = DateTime.Now;
                     _repository.Commands.Remove(command);
                 }
-                _mqttQueue.MqttPublishMessage(TopicType.No_1, TopicSubType.command, _mapping.CommandMappings.MqttPublishCommand(command));
+                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.command, _mapping.CommandMappings.MqttPublishCommand(command));
             }
         }
     }

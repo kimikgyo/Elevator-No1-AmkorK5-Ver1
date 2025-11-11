@@ -18,6 +18,7 @@ namespace Elevator1.Mappings
             {
                 id = model.id,
                 name = model.name,
+                mode = model.mode,
                 state = model.state,
             };
             return publish;

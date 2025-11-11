@@ -5,7 +5,6 @@ using Elevator1.Mappings.interfaces;
 using Elevator1.MQTTs.interfaces;
 using log4net;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Razor.TagHelpers;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -33,6 +32,7 @@ namespace Elevator.Controllers
             _mapping = mapping;
             _mqttQueue = mqttQueue;
         }
+
         //// GET: api/<ValuesController>
         [HttpGet]
         public ActionResult Get()
@@ -41,11 +41,12 @@ namespace Elevator.Controllers
             var command = _repository.Commands.GetAll().FirstOrDefault();
             if (command != null)
             {
-                 responseDto = _mapping.CommandMappings.Response(command);
+                responseDto = _mapping.CommandMappings.Response(command);
             }
 
             return Ok(responseDto);
         }
+
         // POST api/<ValuesController>
         [HttpPost]
         public ActionResult Post([FromBody] APIAddRequestDtoCommand add)
@@ -63,7 +64,7 @@ namespace Elevator.Controllers
                                    $",Date = {add}"
                                    );
                     _repository.Commands.Add(command);
-                    _mqttQueue.MqttPublishMessage(TopicType.No_1, TopicSubType.command, _mapping.CommandMappings.MqttPublishCommand(command));
+                    _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.command, _mapping.CommandMappings.MqttPublishCommand(command));
                     return Ok(add);
                 }
                 else
@@ -91,71 +92,30 @@ namespace Elevator.Controllers
         {
             Command command = null;
             string subtype = addRequestDto.subType.ToUpper();
-            string actionName = null;
-            switch (subtype)
+            var parameter = addRequestDto.parameters.FirstOrDefault();
+            if (parameter != null)
             {
-                case nameof(SubType.DOOROPEN):
-                    actionName = nameof(CommandAction.DOOROPEN);
-                    break;
+                bool existSubTypes = Enum.IsDefined(typeof(CommandAction), parameter.value);
+                if (!existSubTypes) return command;
+                string actionName = parameter.value;
 
-                case nameof(SubType.DOORCLOSE):
-                    actionName = nameof(CommandAction.DOORCLOSE);
-                    break;
-
-                case nameof(SubType.ELEVATORMODE):
-                    var mode = addRequestDto.parameters.FirstOrDefault();
-                    if(mode!=null)
-                    {
-                        if(mode.value == nameof(CommandAction.AGVMODE)) actionName = nameof(CommandAction.AGVMODE);
-                        else if(mode.value == nameof(CommandAction.NOTAGVMODE)) actionName = nameof(CommandAction.NOTAGVMODE);
-                    }
-                    break;
-
-                case nameof(SubType.SOURCEFLOOR):
-                    var sourceparameter = addRequestDto.parameters.FirstOrDefault();
-                    if (sourceparameter != null)
-                    {
-                        actionName = CreateActionFloor(sourceparameter.key, sourceparameter.value);
-                    }
-                    break;
-
-                case nameof(SubType.DESTINATIONFLOOR):
-                    var destparameter = addRequestDto.parameters.FirstOrDefault();
-                    if (destparameter != null)
-                    {
-                        actionName = CreateActionFloor(destparameter.key, destparameter.value);
-                    }
-                    break;
-            }
-            if (actionName != null)
-            {
-                command = _mapping.CommandMappings.APIAddRequest(addRequestDto, actionName);
+                if (actionName != null)
+                {
+                    command = _mapping.CommandMappings.APIAddRequest(addRequestDto, actionName);
+                }
             }
 
             return command;
         }
 
-        private string CreateActionFloor(string key, string value)
-        {
-            string Name = $"{key}_{value}";
-            bool existSubTypes = Enum.IsDefined(typeof(CommandAction), Name);
-            if (existSubTypes)
-            {
-                return Name;
-            }
-            else
-            {
-                return null;
-            }
-        }
 
         private string ConditionAddCommand(APIAddRequestDtoCommand addRequestDto)
         {
             string massage = null;
 
-            if (IsInvalid(addRequestDto.commnadId)) massage = "Check commnadId";
+            if (IsInvalid(addRequestDto.guid)) massage = "Check commnadId";
             var runcommand = _repository.Commands.GetAll().FirstOrDefault();
-            if(runcommand != null) massage = "There is a command in progress";
+            if (runcommand != null) massage = "There is a command in progress";
 
             return massage;
         }

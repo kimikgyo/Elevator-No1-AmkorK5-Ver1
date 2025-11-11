@@ -21,7 +21,7 @@ namespace Elevator1.Mappings
                 state = model.state,
                 WorkerId = model.WorkerId,
                 actionName = model.actionName,
-                parameters = JsonSerializer.Deserialize<List<Common.Dtos.Parameter>>(model.parametersjson),
+                parameters = JsonSerializer.Deserialize<List<Common.Dtos.Parameter>>(model.parameterJson),
             };
 
             return response;
@@ -31,19 +31,17 @@ namespace Elevator1.Mappings
         {
             var add = new Command
             {
-                commnadId = aPIAddRequestDto.commnadId,
+                commnadId = aPIAddRequestDto.guid,
                 name = aPIAddRequestDto.name,
                 type = aPIAddRequestDto.type,
                 subType = aPIAddRequestDto.subType,
                 state = nameof(CommandState.PENDING),
                 WorkerId = aPIAddRequestDto.assignedWorkerId,
                 actionName = actionName,
-                parametersjson = JsonSerializer.Serialize(aPIAddRequestDto.parameters),
-                //preReportsjson = aPIAddRequestDto.preReportsjson
-                //postReportsjson = aPIAddRequestDto.postReportsjson
-                createdAt = aPIAddRequestDto.createdAt,
-                updatedAt = aPIAddRequestDto.updatedAt,
-                finishedAt = aPIAddRequestDto.finishedAt,
+                parameterJson = JsonSerializer.Serialize(aPIAddRequestDto.parameters),
+
+                createdAt = DateTime.Now,
+     
             };
 
             return add;
@@ -60,10 +58,7 @@ namespace Elevator1.Mappings
                 state = model.state,
                 WorkerId = model.WorkerId,
                 actionName = model.actionName,
-                parameters = JsonSerializer.Deserialize<List<Common.Dtos.Parameter>>(model.parametersjson),
-                createdAt = model.createdAt,
-                updatedAt = model.updatedAt,
-                finishedAt = model.finishedAt
+                parameterJson = model.parameterJson,
             };
             return publish;
         }

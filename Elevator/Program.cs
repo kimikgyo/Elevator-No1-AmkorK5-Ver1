@@ -74,8 +74,9 @@ try
         c.SwaggerDoc("v1", new OpenApiInfo
         {
             Title = "Elevator",
-            Version = "1.0"
+            Version = "v1"
         });
+
         c.EnableAnnotations(); // Annotations 표시 활성화
     });
 
@@ -108,7 +109,7 @@ try
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.RoutePrefix = "swagger";
+        c.RoutePrefix = string.Empty;
         // Swagger JSON 엔드포인트 등록 (필수)
         // 이 부분에서 Swagger 문서의 URL과 표시 이름을 지정합니다.
         // "/swagger/v1/swagger.json"은 기본 경로이고,
@@ -145,6 +146,8 @@ try
     app.UseCors("AllowAll");
     // 2) 미들웨어 파이프라인 구성 ------------------------------------------------
     app.UseHttpsRedirection();
+    // 4. 라우팅 미들웨어 (이게 없으면 라우팅이 안 됩니다!)
+    app.UseRouting();
     // 인증/인가가 필요하면 여기 추가
     app.UseAuthentication();
     app.UseAuthorization();

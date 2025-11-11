@@ -2,7 +2,7 @@
 {
     public enum TopicType
     {
-       No_1,
+        NO1,
     }
 
     public enum TopicSubType
@@ -10,8 +10,6 @@
         status,
         command
     }
-
-
 
     public class MqttPublishMessageDto
     {
