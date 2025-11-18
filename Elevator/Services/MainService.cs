@@ -198,7 +198,7 @@ namespace Elevator.Services
             this.elevator = new Status
             {
                 id = ConfigData.ElevatorSetting.id,
-                mode = nameof(Mode.NOTAGVMODE),
+                mode = nameof(Mode.AGVMODE),
                 name = "Elevator",
                 state = nameof(State.DISCONNECT),
                 createAt = DateTime.Now,
@@ -207,9 +207,9 @@ namespace Elevator.Services
             _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
         }
 
-        private void CommandStateUpdate(string state)
+        private void CommandStateUpdate(string commandId , string state)
         {
-            var command = _repository.Commands.GetAll().FirstOrDefault();
+            var command = _repository.Commands.GetAll().FirstOrDefault(c=>c.commnadId == commandId);
             if (command != null && command.state != state)
             {
                 command.state = state;

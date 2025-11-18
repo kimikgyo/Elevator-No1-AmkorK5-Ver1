@@ -1,6 +1,7 @@
 ﻿using Common.Dtos;
 using Common.Models;
 using System.Text;
+using System.Text.Json;
 
 namespace Elevator.Services
 {
@@ -42,7 +43,7 @@ namespace Elevator.Services
 
         private void elevatorState(ProtocolDto protocolDto)
         {
-            bool basicCondition = (protocolDto.Status == 2 || protocolDto.Status == 9) && protocolDto.Cmd == 11 && protocolDto.Aid == 1 && protocolDto.Dld == 1;
+            bool basicCondition = (protocolDto.Status == 2 || protocolDto.Status == 9) && protocolDto.Cmd == 11 && protocolDto.AId == 1 && protocolDto.Dld == 1;
             bool doorOpen = basicCondition && protocolDto.Dir == 0 && protocolDto.Door == 2;
             bool doorClose = basicCondition && protocolDto.Dir == 0 && protocolDto.Door == 3;
             bool upDriving = basicCondition && protocolDto.Dir == 1 && protocolDto.Door == 3;
@@ -104,13 +105,15 @@ namespace Elevator.Services
 
         private void commmandCompleted(ProtocolDto protocolDto)
         {
-            var command = _repository.Commands.GetAll().FirstOrDefault(c => c.state == nameof(CommandState.EXECUTING));
-            if (command != null)
+            var commands = _repository.Commands.GetAll().Where(c => c.state == nameof(CommandState.EXECUTING)).ToList();
+            var doorOpenCommand = _repository.Commands.GetAll().FirstOrDefault(c => c.actionName == nameof(CommandAction.DOOROPEN));
+            foreach (var command in commands)
             {
-                bool basicCondition = (protocolDto.Status == 2 || protocolDto.Status == 9) && protocolDto.Cmd == 11 && protocolDto.Aid == 1 && protocolDto.Dld == 1;
+                bool basicCondition = (protocolDto.Status == 2 || protocolDto.Status == 9) && protocolDto.Cmd == 11 && protocolDto.AId == 1 && protocolDto.Dld == 1;
                 bool doorOpen = basicCondition && protocolDto.Dir == 0 && protocolDto.Door == 2;
                 bool doorClose = basicCondition && protocolDto.Dir == 0 && protocolDto.Door == 3;
                 bool changeState = false;
+                bool createDoorOpen = false;
 
                 switch (command.actionName)
                 {
@@ -124,53 +127,111 @@ namespace Elevator.Services
 
                     case nameof(CommandAction.CALL_B1F):
                     case nameof(CommandAction.GOTO_B1F):
-                        changeState = doorClose && protocolDto.Floor == 1;
+                        if (protocolDto.Floor == 1)
+                        {
+                            createDoorOpen = doorClose && doorOpenCommand == null;
+                            if (doorOpen) changeState = true;
+                        }
+
                         break;
 
                     case nameof(CommandAction.CALL_1F):
                     case nameof(CommandAction.GOTO_1F):
-                        changeState = doorClose && protocolDto.Floor == 2;
+                        if (protocolDto.Floor == 2)
+                        {
+                            createDoorOpen = doorClose && doorOpenCommand == null;
+                            if (doorOpen) changeState = true;
+                        }
                         break;
 
                     case nameof(CommandAction.CALL_2F):
                     case nameof(CommandAction.GOTO_2F):
-                        changeState = doorClose && protocolDto.Floor == 3;
+                        if (protocolDto.Floor == 3)
+                        {
+                            createDoorOpen = doorClose && doorOpenCommand == null;
+                            if (doorOpen) changeState = true;
+                        }
+
                         break;
 
                     case nameof(CommandAction.CALL_3F):
                     case nameof(CommandAction.GOTO_3F):
-                        changeState = doorClose && protocolDto.Floor == 4;
+                        if (protocolDto.Floor == 4)
+                        {
+                            createDoorOpen = doorClose && doorOpenCommand == null;
+                            if (doorOpen) changeState = true;
+                        }
+
                         break;
 
                     case nameof(CommandAction.CALL_4F):
                     case nameof(CommandAction.GOTO_4F):
-                        changeState = doorClose && protocolDto.Floor == 5;
+                        if (protocolDto.Floor == 5)
+                        {
+                            createDoorOpen = doorClose && doorOpenCommand == null;
+                            if (doorOpen) changeState = true;
+                        }
 
                         break;
 
                     case nameof(CommandAction.CALL_5F):
                     case nameof(CommandAction.GOTO_5F):
-                        changeState = doorClose && protocolDto.Floor == 6;
+                        if (protocolDto.Floor == 6)
+                        {
+                            createDoorOpen = doorClose && doorOpenCommand == null;
+                            if (doorOpen) changeState = true;
+                        }
+
                         break;
 
                     case nameof(CommandAction.CALL_6F):
                     case nameof(CommandAction.GOTO_6F):
-                        changeState = doorClose && protocolDto.Floor == 7;
+                        if (protocolDto.Floor == 7)
+                        {
+                            createDoorOpen = doorClose && doorOpenCommand == null;
+                            if (doorOpen) changeState = true;
+                        }
+
                         break;
                 }
-                if (changeState)
+                if (createDoorOpen)
                 {
-                    CommandStateUpdate(nameof(CommandState.COMPLETED));
+                    CreateCommand(nameof(SubType.DOOROPEN), nameof(CommandAction.DOOROPEN), nameof(CommandState.PENDING));
+                }
+                else if (changeState)
+                {
+                    CommandStateUpdate(command.commnadId, nameof(CommandState.COMPLETED));
                 }
             }
         }
 
+        private void CreateCommand(string subType, string parameterValue, string state)
+        {
+            var param = new Parameter
+            {
+                key = "Action",
+                value = parameterValue.ToString()
+            };
+            var command = new Command
+            {
+                commnadId = $"ElevatorNo1_{Guid.NewGuid().ToString()}",
+                name = parameterValue.ToString(),
+                type = "ACTION",
+                subType = subType.ToString(),
+                state = state.ToString(),
+                WorkerId = "",
+                actionName = parameterValue.ToString(),
+                parameterJson = JsonSerializer.Serialize(param),
+            };
+            _repository.Commands.Add(command);
+        }
+
         private void commandExcuting(ProtocolDto protocolDto)
         {
-            var command = _repository.Commands.GetAll().FirstOrDefault(c => c.state == nameof(CommandState.REQUEST));
-            if (command != null)
+            var commands = _repository.Commands.GetAll().Where(c => c.state == nameof(CommandState.PENDING)).ToList();
+            foreach (var command in commands)
             {
-                bool basicCondition = protocolDto.Cmd == 21 && protocolDto.Aid == 1 && protocolDto.Dld == 1 && protocolDto.Dir == 0;
+                bool basicCondition = protocolDto.Cmd == 21 && protocolDto.AId == 1 && protocolDto.Dld == 1 && protocolDto.Dir == 0;
                 bool changeState = false;
 
                 switch (command.actionName)
@@ -227,18 +288,17 @@ namespace Elevator.Services
                 }
                 if (changeState)
                 {
-                    CommandStateUpdate(nameof(CommandState.EXECUTING));
+                    CommandStateUpdate(command.commnadId, nameof(CommandState.EXECUTING));
                     if (command.actionName == nameof(CommandAction.AGVMODE))
                     {
                         elevatorModeUpdate(nameof(Mode.AGVMODE));
-                        CommandStateUpdate(nameof(CommandState.COMPLETED));
-
+                        CommandStateUpdate(command.commnadId, nameof(CommandState.COMPLETED));
                     }
                     else if (command.actionName == nameof(CommandAction.NOTAGVMODE))
                     {
                         elevatorModeUpdate(nameof(Mode.NOTAGVMODE));
                         //기본상태값에 프로토콜이없음.
-                        CommandStateUpdate(nameof(CommandState.COMPLETED));
+                        CommandStateUpdate(command.commnadId, nameof(CommandState.COMPLETED));
                     }
                 }
             }
@@ -568,104 +628,104 @@ namespace Elevator.Services
         {
             //"&","^"두개의 문자 잘라서 배열로 반환한다
             string[] splitData = recvMsg.Split(new string[] { "&", "^", "\r\n" }, StringSplitOptions.None);
-
+            elevatorProtocolDto.Cmd = 0;
+            elevatorProtocolDto.AId = 0;
+            elevatorProtocolDto.Count = 0;
+            elevatorProtocolDto.Dld = 0;
+            elevatorProtocolDto.Status = 0;
+            elevatorProtocolDto.Floor = 0;
+            elevatorProtocolDto.Dir = 0;
+            elevatorProtocolDto.Door = 0;
+            elevatorProtocolDto.car_f = 0;
+            elevatorProtocolDto.car_r = 0;
+            elevatorProtocolDto.Hallup_f = 0;
+            elevatorProtocolDto.Hallup_r = 0;
+            elevatorProtocolDto.HallDn_f = 0;
+            elevatorProtocolDto.HallDn_r = 0;
+            elevatorProtocolDto.ErrCode = 0;
+            elevatorProtocolDto.Param = 0;
+            elevatorProtocolDto.Data = 0;
+            elevatorProtocolDto.Dest = 0;
+            elevatorProtocolDto.Result = "";
             foreach (var Data in splitData)
             {
                 if (Data.Contains("Cmd="))
                 {
                     //Data에 해당 문자가 있으면 초기화 후 진행
                     //문자 바꾸기 하여 Cmd=문자를 ""빈문자로 변경
-                    elevatorProtocolDto.Cmd = 0;
                     elevatorProtocolDto.Cmd = Convert.ToInt32(Data.Replace("Cmd=", ""));
                 }
-                else if (Data.Contains("Aid="))
+                else if (Data.Contains("AId=") || Data.Contains("Aid="))
                 {
-                    elevatorProtocolDto.Aid = 0;
-                    elevatorProtocolDto.Aid = Convert.ToInt32(Data.Replace("Aid=", ""));
+                    if (Data.Contains("AId=")) elevatorProtocolDto.AId = Convert.ToInt32(Data.Replace("AId=", ""));
+                    else if (Data.Contains("Aid=")) elevatorProtocolDto.AId = Convert.ToInt32(Data.Replace("Aid=", ""));
                 }
                 else if (Data.Contains("Count="))
                 {
-                    elevatorProtocolDto.Count = 0;
                     elevatorProtocolDto.Count = Convert.ToInt32(Data.Replace("Count=", ""));
                 }
                 else if (Data.Contains("DId="))
                 {
-                    elevatorProtocolDto.Dld = 0;
                     elevatorProtocolDto.Dld = Convert.ToInt32(Data.Replace("DId=", ""));
                 }
                 else if (Data.Contains("Status="))
                 {
-                    elevatorProtocolDto.Status = 0;
                     elevatorProtocolDto.Status = Convert.ToInt32(Data.Replace("Status=", ""));
                 }
                 else if (Data.Contains("Floor="))
                 {
-                    elevatorProtocolDto.Floor = 0;
                     elevatorProtocolDto.Floor = Convert.ToInt32(Data.Replace("Floor=", ""));
                 }
                 else if (Data.Contains("Dir="))
                 {
-                    elevatorProtocolDto.Dir = 0;
                     elevatorProtocolDto.Dir = Convert.ToInt32(Data.Replace("Dir=", ""));
                 }
                 else if (Data.Contains("Door="))
                 {
-                    elevatorProtocolDto.Door = 0;
                     elevatorProtocolDto.Door = Convert.ToInt32(Data.Replace("Door=", ""));
                 }
                 else if (Data.Contains("car_f="))
                 {
-                    elevatorProtocolDto.car_f = 0;
                     elevatorProtocolDto.car_f = Convert.ToInt32(Data.Replace("car_f=", ""));
                 }
                 else if (Data.Contains("car_r="))
                 {
-                    elevatorProtocolDto.car_r = 0;
                     elevatorProtocolDto.car_r = Convert.ToInt32(Data.Replace("car_r=", ""));
                 }
                 else if (Data.Contains("Hallup_f="))
                 {
-                    elevatorProtocolDto.Hallup_f = 0;
                     elevatorProtocolDto.Hallup_f = Convert.ToInt32(Data.Replace("Hallup_f=", ""));
                 }
                 else if (Data.Contains("Hallup_r="))
                 {
-                    elevatorProtocolDto.Hallup_r = 0;
                     elevatorProtocolDto.Hallup_r = Convert.ToInt32(Data.Replace("Hallup_r=", ""));
                 }
                 else if (Data.Contains("HallDn_f="))
                 {
-                    elevatorProtocolDto.HallDn_f = 0;
                     elevatorProtocolDto.HallDn_f = Convert.ToInt32(Data.Replace("HallDn_f=", ""));
                 }
                 else if (Data.Contains("HallDn_r="))
                 {
-                    elevatorProtocolDto.HallDn_r = 0;
                     elevatorProtocolDto.HallDn_r = Convert.ToInt32(Data.Replace("HallDn_r=", ""));
                 }
                 else if (Data.Contains("ErrCode="))
                 {
-                    elevatorProtocolDto.ErrCode = 0;
                     elevatorProtocolDto.ErrCode = Convert.ToInt32(Data.Replace("ErrCode=", ""));
                 }
                 else if (Data.Contains("Param="))
                 {
-                    elevatorProtocolDto.Param = 0;
                     elevatorProtocolDto.Param = Convert.ToInt32(Data.Replace("Param=", ""));
                 }
                 else if (Data.Contains("Data="))
                 {
-                    elevatorProtocolDto.Data = 0;
                     elevatorProtocolDto.Data = Convert.ToInt32(Data.Replace("Data=", ""));
                 }
                 else if (Data.Contains("Dest="))
                 {
-                    elevatorProtocolDto.Dest = 0;
                     elevatorProtocolDto.Dest = Convert.ToInt32(Data.Replace("Dest=", ""));
                 }
                 else if (Data.Contains("Result="))
                 {
-                    elevatorProtocolDto.Result = "";
                     elevatorProtocolDto.Result = Data.Replace("Result=", "");
                 }
             }

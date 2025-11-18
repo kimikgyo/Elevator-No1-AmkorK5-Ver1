@@ -28,7 +28,6 @@ namespace Elevator.Services
             var command = _repository.Commands.GetAll().FirstOrDefault(c => (c.state == nameof(CommandState.PENDING)) || (c.state == nameof(CommandState.REQUEST)));
             if (command != null)
             {
-                CommandStateUpdate(nameof(CommandState.REQUEST));
                 switch (command.actionName)
                 {
                     case nameof(CommandAction.DOOROPEN):

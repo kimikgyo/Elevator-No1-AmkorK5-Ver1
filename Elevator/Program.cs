@@ -109,7 +109,7 @@ try
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.RoutePrefix = string.Empty;
+        c.RoutePrefix = "swagger";
         // Swagger JSON 엔드포인트 등록 (필수)
         // 이 부분에서 Swagger 문서의 URL과 표시 이름을 지정합니다.
         // "/swagger/v1/swagger.json"은 기본 경로이고,
@@ -145,7 +145,7 @@ try
     // 등록한 CORS 정책("AllowAll")을 전역으로 적용
     app.UseCors("AllowAll");
     // 2) 미들웨어 파이프라인 구성 ------------------------------------------------
-    app.UseHttpsRedirection();
+    //app.UseHttpsRedirection();
     // 4. 라우팅 미들웨어 (이게 없으면 라우팅이 안 됩니다!)
     app.UseRouting();
     // 인증/인가가 필요하면 여기 추가

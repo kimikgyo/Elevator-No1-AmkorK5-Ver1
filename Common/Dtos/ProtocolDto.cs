@@ -6,7 +6,7 @@
         //cmd 21 제어 응답이 올경우 다시 상태 10요청하여 elev 상태확인
 
         public int Cmd { get; set; }                                //(10)상태요청 , (11)상태응답 ,(20)제어요청 , (21)제어응답
-        public int Aid { get; set; }                                //ACS의 고유번호
+        public int AId { get; set; }                                //ACS의 고유번호
         public int Count { get; set; }                              //호기 갯수
         public int Dld { get; set; }                                //Elevator 제어반ID
         public int Status { get; set; }                             //현재 Elevator 상태 : 정상,고장,파킹

@@ -112,10 +112,11 @@ namespace Elevator.Controllers
         private string ConditionAddCommand(APIAddRequestDtoCommand addRequestDto)
         {
             string massage = null;
-
+            var commandnew = _repository.Commands.GetAll().FirstOrDefault(r => r.commnadId == addRequestDto.guid);
+            if(commandnew !=null) massage = "Check commnadId";
             if (IsInvalid(addRequestDto.guid)) massage = "Check commnadId";
-            var runcommand = _repository.Commands.GetAll().FirstOrDefault();
-            if (runcommand != null) massage = "There is a command in progress";
+            //var runcommand = _repository.Commands.GetAll().FirstOrDefault();
+            //if (runcommand != null) massage = "There is a command in progress";
 
             return massage;
         }
