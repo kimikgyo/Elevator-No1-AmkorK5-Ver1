@@ -9,6 +9,7 @@ namespace Common.Models
 
     public enum SubType
     {
+        MODECHANGE,
         SOURCEFLOOR,
         DOOROPEN,
         DOORCLOSE,

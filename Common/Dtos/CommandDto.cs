@@ -11,7 +11,7 @@ namespace Common.Dtos
         [JsonPropertyOrder(5)] public string subType { get; set; }
         [JsonPropertyOrder(6)] public int sequence { get; set; }
         [JsonPropertyOrder(7)] public string state { get; set; }
-        [JsonPropertyOrder(8)] public string assignedWorkerId { get; set; }
+        [JsonPropertyOrder(8)] public string? assignedWorkerId { get; set; }
         [JsonPropertyOrder(12)] public List<Parameter> parameters { get; set; }
         //[JsonPropertyOrder(13)] public List<PreReport> preReports { get; set; }
         //[JsonPropertyOrder(14)] public List<postReport> postReports { get; set; }
