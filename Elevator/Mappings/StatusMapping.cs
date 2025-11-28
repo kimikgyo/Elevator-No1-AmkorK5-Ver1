@@ -1,4 +1,5 @@
 ﻿using Common.Dtos;
+using Common.Dtos.Mqtts.Status;
 using Common.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc.Formatters;
@@ -12,9 +13,9 @@ namespace Elevator1.Mappings
 {
     public class StatusMapping
     {
-        public MqttPublishDtoStatus MqttPublishStatus(Status model)
+        public Publish_StatusDto MqttPublishStatus(Status model)
         {
-            var publish = new MqttPublishDtoStatus()
+            var publish = new Publish_StatusDto()
             {
                 id = model.id,
                 name = model.name,

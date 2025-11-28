@@ -1,4 +1,5 @@
 ﻿using Common.Dtos;
+using Common.Dtos.Rests;
 using Common.Models;
 using Data.Interfaces;
 using Elevator1.Mappings.interfaces;
@@ -37,7 +38,7 @@ namespace Elevator.Controllers
         [HttpGet]
         public ActionResult Get()
         {
-            ResponseDtoCommand responseDto = null;
+            Get_CommandDto responseDto = null;
             var command = _repository.Commands.GetAll().FirstOrDefault();
             if (command != null)
             {
@@ -49,7 +50,7 @@ namespace Elevator.Controllers
 
         // POST api/<ValuesController>
         [HttpPost]
-        public ActionResult Post([FromBody] APIAddRequestDtoCommand add)
+        public ActionResult Post([FromBody] Post_CommandDto add)
         {
             logger.Info($"AddRequest = {add}");
             string message = ConditionAddCommand(add);
@@ -88,7 +89,7 @@ namespace Elevator.Controllers
             }
         }
 
-        private Command CreateCommand(APIAddRequestDtoCommand addRequestDto)
+        private Command CreateCommand(Post_CommandDto addRequestDto)
         {
             Command command = null;
             string subtype = addRequestDto.subType.ToUpper();
@@ -108,12 +109,11 @@ namespace Elevator.Controllers
             return command;
         }
 
-
-        private string ConditionAddCommand(APIAddRequestDtoCommand addRequestDto)
+        private string ConditionAddCommand(Post_CommandDto addRequestDto)
         {
             string massage = null;
             var commandnew = _repository.Commands.GetAll().FirstOrDefault(r => r.commnadId == addRequestDto.guid);
-            if(commandnew !=null) massage = "Check commnadId";
+            if (commandnew != null) massage = "Check commnadId";
             if (IsInvalid(addRequestDto.guid)) massage = "Check commnadId";
             //var runcommand = _repository.Commands.GetAll().FirstOrDefault();
             //if (runcommand != null) massage = "There is a command in progress";
@@ -135,10 +135,41 @@ namespace Elevator.Controllers
         //{
         //}
 
-        //// DELETE api/<ValuesController>/5
-        //[HttpDelete("{id}")]
-        //public void Delete(int id)
-        //{
-        //}
+        // DELETE api/<ValuesController>/5
+        [HttpDelete("{id}")]
+        public ActionResult Delete(string id)
+        {
+            var command = _repository.Commands.GetById(id);
+            if (command != null)
+            {
+                CommandStateUpdate(command.commnadId, nameof(CommandState.CANCELED));
+                _repository.Commands.Remove(command);
+                return Ok();
+            }
+            else
+            {
+                return NotFound("DeleteComplete");
+            }
+        }
+
+        private void CommandStateUpdate(string commandId, string state)
+        {
+            var command = _repository.Commands.GetById(commandId);
+            if (command != null && command.state != state)
+            {
+                command.state = state;
+                if (command.state == nameof(CommandState.COMPLETED) || command.state == nameof(CommandState.CANCELED))
+                {
+                    command.finishedAt = DateTime.Now;
+                    _repository.Commands.Remove(command);
+                }
+                else
+                {
+                    command.updatedAt = DateTime.Now;
+                    _repository.Commands.Update(command);
+                }
+                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.command, _mapping.CommandMappings.MqttPublishCommand(command));
+            }
+        }
     }
 }

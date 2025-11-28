@@ -1,18 +1,16 @@
 ﻿using Common.Dtos;
+using Common.Dtos.Mqtts.Command;
+using Common.Dtos.Rests;
 using Common.Models;
-using System.ComponentModel.Design;
-using System.Data;
-using System.Reflection.Metadata;
 using System.Text.Json;
-using System.Xml.Linq;
 
 namespace Elevator1.Mappings
 {
     public class CommandMapping
     {
-        public ResponseDtoCommand Response(Command model)
+        public Get_CommandDto Response(Command model)
         {
-            var response = new ResponseDtoCommand()
+            var response = new Get_CommandDto()
             {
                 commnadId = model.commnadId,
                 name = model.name,
@@ -21,13 +19,13 @@ namespace Elevator1.Mappings
                 state = model.state,
                 WorkerId = model.WorkerId,
                 actionName = model.actionName,
-                parameters = JsonSerializer.Deserialize<List<Common.Dtos.Parameter>>(model.parameterJson),
+                parameters = JsonSerializer.Deserialize<List<Parameter>>(model.parameterJson),
             };
 
             return response;
         }
 
-        public Command APIAddRequest(APIAddRequestDtoCommand aPIAddRequestDto, string actionName)
+        public Command APIAddRequest(Post_CommandDto aPIAddRequestDto, string actionName)
         {
             var add = new Command
             {
@@ -41,15 +39,14 @@ namespace Elevator1.Mappings
                 parameterJson = JsonSerializer.Serialize(aPIAddRequestDto.parameters),
 
                 createdAt = DateTime.Now,
-     
             };
 
             return add;
         }
 
-        public MqttPublishDtoCommand MqttPublishCommand(Command model)
+        public Publish_CommandDto MqttPublishCommand(Command model)
         {
-            var publish = new MqttPublishDtoCommand()
+            var publish = new Publish_CommandDto()
             {
                 commnadId = model.commnadId,
                 name = model.name,

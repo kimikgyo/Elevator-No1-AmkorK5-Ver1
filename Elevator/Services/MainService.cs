@@ -72,9 +72,6 @@ namespace Elevator.Services
             }
         }
 
-
-
-
         private async void Loop()
         {
             while (true)
@@ -172,12 +169,14 @@ namespace Elevator.Services
                     }
                     catch (Exception ex)
                     {
+                        elevatorStateUpdate(nameof(State.PROTOCOLERROR));
                         LogExceptionMessage(ex);
                     }
                 }
             }
             catch (Exception ex)
             {
+                elevatorStateUpdate(nameof(State.PROTOCOLERROR));
                 LogExceptionMessage(ex);
             }
             return false;
@@ -202,7 +201,6 @@ namespace Elevator.Services
             }
         }
 
-
         private void elevatorStateUpdate(string state)
         {
             var elevator = _repository.ElevatorStatus.GetAll().FirstOrDefault();
@@ -223,7 +221,7 @@ namespace Elevator.Services
             this.elevator = new Status
             {
                 id = ConfigData.ElevatorSetting.id,
-                mode = nameof(Mode.AGVMODE),
+                mode = ConfigData.ElevatorSetting.mode,
                 name = "Elevator",
                 state = nameof(State.DISCONNECT),
                 createAt = DateTime.Now,
@@ -232,25 +230,26 @@ namespace Elevator.Services
             _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
         }
 
-        private void CommandStateUpdate(string commandId , string state)
+        private void CommandStateUpdate(string commandId, string state)
         {
-            var command = _repository.Commands.GetAll().FirstOrDefault(c=>c.commnadId == commandId);
+            var command = _repository.Commands.GetById(commandId);
             if (command != null && command.state != state)
             {
                 command.state = state;
-                if (command.state != nameof(CommandState.COMPLETED))
-                {
-                    command.updatedAt = DateTime.Now;
-                    _repository.Commands.Update(command);
-                }
-                else
+                if (command.state == nameof(CommandState.COMPLETED) || command.state == nameof(CommandState.CANCELED))
                 {
                     command.finishedAt = DateTime.Now;
                     _repository.Commands.Remove(command);
                 }
+                else
+                {
+                    command.updatedAt = DateTime.Now;
+                    _repository.Commands.Update(command);
+                }
                 _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.command, _mapping.CommandMappings.MqttPublishCommand(command));
             }
         }
+
         /// <summary>
         /// 생성된 로그 폴더 구조(날짜 폴더 → JobScheduler → 파일)에 맞추어
         /// 오래된 로그 디렉토리를 삭제하는 메소드.

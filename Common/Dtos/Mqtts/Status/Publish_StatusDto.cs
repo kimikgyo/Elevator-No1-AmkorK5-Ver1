@@ -1,8 +1,8 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Common.Dtos
+namespace Common.Dtos.Mqtts.Status
 {
-    public class MqttPublishDtoStatus
+    public class Publish_StatusDto
     {
         [JsonPropertyOrder(1)] public string id { get; set; }
         [JsonPropertyOrder(2)] public string name { get; set; }

@@ -1,6 +1,4 @@
-﻿using Common.Models;
-
-namespace Data
+﻿namespace Data
 {
     public static class ConfigData
     {
@@ -8,6 +6,7 @@ namespace Data
         public static List<MqttTopicPublish> PublishTopics { get; set; }
         public static MQTTSetting MQTTSetting { get; set; }
         public static ElevatorSetting ElevatorSetting { get; set; }
+
         public static void Load(IConfiguration configuration)
         {
             ConfigData.MQTTSetting = configuration.GetSection("MQTTSetting").Get<MQTTSetting>();
@@ -16,13 +15,16 @@ namespace Data
             ConfigData.ElevatorSetting = configuration.GetSection("ElevatorSetting").Get<ElevatorSetting>();
         }
     }
+
     public class ElevatorSetting
     {
         public string ip { get; set; }
         public string id { get; set; }
+        public string mode { get; set; }
         public string port { get; set; }
         public string timeout { get; set; }
     }
+
     public class MQTTSetting
     {
         public string id { get; set; }
@@ -36,6 +38,7 @@ namespace Data
         public string subType { get; set; }
         public string topic { get; set; }
     }
+
     public class MqttTopicSubscribe
     {
         public string topic { get; set; }

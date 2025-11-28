@@ -11,12 +11,14 @@ namespace Data.Repositorys
         private readonly string connectionString;
         private readonly List<Command> _commands = new List<Command>(); // cached data
         private readonly object _lock = new object();
+
         public CommandRepository(string connectionString)
         {
             this.connectionString = connectionString;
             //createTable();
             //Load();
         }
+
         private void Load()
         {
             _commands.Clear();
@@ -63,10 +65,15 @@ namespace Data.Repositorys
                 logger.Info($"Remove: {remove}");
             }
         }
+
         public List<Command> GetAll()
         {
             return _commands.ToList();
         }
 
+        public Command GetById(string id)
+        {
+            return _commands.FirstOrDefault(c => c.commnadId == id);
+        }
     }
 }
