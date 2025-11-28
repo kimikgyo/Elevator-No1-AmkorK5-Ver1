@@ -1,7 +1,7 @@
 ﻿using Common.Models;
 using System.Text.Json.Serialization;
 
-namespace Common.Dtos.Rests
+namespace Common.Dtos.Rests.Command
 {
     public class Get_CommandDto
     {
