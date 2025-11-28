@@ -1,10 +1,7 @@
-﻿using Common.DTOs.Rests.Carriers;
-using Common.DTOs.Rests.JobTemplates;
-using Common.DTOs.Rests.Maps;
+﻿using Common.DTOs.Rests.Maps;
 using Common.DTOs.Rests.Positions;
-using Common.DTOs.Rests.Workers;
-using Common.Interfaces;
-using Common.Models.Bases;
+using Common.Models;
+using Data.Interfaces;
 using log4net;
 using Newtonsoft.Json;
 using static ExceptionFilterUtility;
@@ -35,19 +32,6 @@ namespace RestApi.Interfases
             return httpClient;
         }
 
-        public async Task<List<Response_WorkerDto>> GetResourceWorker()
-        {
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<Response_WorkerDto>>("api/workers");
-            }
-            //catch (Exception ex) when (True(() => _logger.Error(ex)))
-            catch (Exception ex) when (True(() => ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + ex)))
-            {
-                return null;
-            }
-        }
-
         public async Task<List<Response_MapDto>> GetResourceMap()
         {
             try
@@ -74,107 +58,7 @@ namespace RestApi.Interfases
             }
         }
 
-        public async Task<List<Response_CarrierDto>> GetResourceCarrier()
-        {
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<Response_CarrierDto>>("api/carriers");
-            }
-            //catch (Exception ex) when (True(() => _logger.Error(ex)))
-            catch (Exception ex) when (True(() => ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + ex)))
-            {
-                return null;
-            }
-        }
-
-        public async Task<List<Response_JobTemplateDto>> STIGetResourceJobTemplate()
-        {
-            try
-            {
-                string jsonString = await _httpClient.GetStringAsync("api/JobTemplates/STI");
-                return await _httpClient.GetFromJsonAsync<List<Response_JobTemplateDto>>("api/JobTemplates/STI");
-            }
-            //catch (Exception ex) when (True(() => _logger.Error(ex)))
-            catch (Exception ex) when (True(() => ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + ex)))
-            {
-                return null;
-            }
-        }
-
-        public async Task<List<Response_JobTemplateDto>> AmkorGetResourceJobTemplate()
-        {
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<Response_JobTemplateDto>>("api/JobTemplates/Amkor");
-            }
-            //catch (Exception ex) when (True(() => _logger.Error(ex)))
-            catch (Exception ex) when (True(() => ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + ex)))
-            {
-                return null;
-            }
-        }
-
-        public async Task<ApiResponseDto> ElevatorPostMissionQueueAsync(object value)
-        {
-            if (!AcceptFilterUtility.WriteAccepted) { ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + $"-- API NOT ALLOWED. [{nameof(ElevatorPostMissionQueueAsync)}] --"); return null; }
-
-            try
-            {
-                //수정본
-                var response = await _httpClient.PostAsJsonAsync("api/missions", value);
-                var jsonResponse = await response.Content.ReadAsStringAsync();
-
-                var missionQueueResponse = new ApiResponseDto
-                {
-                    statusCode = Convert.ToInt32(response.StatusCode),
-                    statusText = response.StatusCode.ToString(),
-                    message = jsonResponse
-                };
-                return missionQueueResponse;
-
-                //기존
-                //var response = await _httpClient.PostAsJsonAsync("api/Workers/mission_queue", value);
-                //var jsonResponse = await response.Content.ReadAsStringAsync();
-                //return JsonConvert.DeserializeObject<ApiPostResponseDtoMissionQueue>(jsonResponse);
-            }
-            //catch (Exception ex) when (True(() => _logger.Error(ex)))
-            catch (Exception ex) when (True(() => ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + ex)))
-            {
-                return null;
-            }
-        }
-
-        public async Task<ApiResponseDto> ElevatorDeletetMissionQueueAsync(string id)
-        {
-            if (!AcceptFilterUtility.WriteAccepted) { ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + $"-- API NOT ALLOWED. [{nameof(ElevatorPostMissionQueueAsync)}] --"); return null; }
-
-            try
-            {
-                //수정본
-                var response = await _httpClient.DeleteAsync($"api/missions/{id}");
-                var jsonResponse = await response.Content.ReadAsStringAsync();
-
-                var missionQueueResponse = new ApiResponseDto
-                {
-                    statusCode = Convert.ToInt32(response.StatusCode),
-                    statusText = response.StatusCode.ToString(),
-                    message = jsonResponse
-                };
-                return missionQueueResponse;
-
-                //기존
-                //var response = await _httpClient.PostAsJsonAsync("api/Workers/mission_queue", value);
-                //var jsonResponse = await response.Content.ReadAsStringAsync();
-                //return JsonConvert.DeserializeObject<ApiPostResponseDtoMissionQueue>(jsonResponse);
-            }
-            //catch (Exception ex) when (True(() => _logger.Error(ex)))
-            catch (Exception ex) when (True(() => ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + ex)))
-            {
-                return null;
-            }
-        }
-
-        public async Task<ApiResponseDto> WorkerPostMissionQueueAsync(object value)
+        public async Task<ApResponseDto> WorkerPostMissionQueueAsync(object value)
         {
             if (!AcceptFilterUtility.WriteAccepted) { ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + $"-- API NOT ALLOWED. [{nameof(WorkerPostMissionQueueAsync)}] --"); return null; }
 
@@ -184,7 +68,7 @@ namespace RestApi.Interfases
                 var response = await _httpClient.PostAsJsonAsync("missions/worker", value);
                 var jsonResponse = await response.Content.ReadAsStringAsync();
 
-                var missionQueueResponse = new ApiResponseDto
+                var missionQueueResponse = new ApResponseDto
                 {
                     statusCode = Convert.ToInt32(response.StatusCode),
                     statusText = response.StatusCode.ToString(),
@@ -204,47 +88,17 @@ namespace RestApi.Interfases
             }
         }
 
-        public async Task<ApiResponseDto> MiddlewarePostMissionQueueAsync(object value)
-        {
-            if (!AcceptFilterUtility.WriteAccepted) { ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + $"-- API NOT ALLOWED. [{nameof(MiddlewarePostMissionQueueAsync)}] --"); return null; }
-
-            try
-            {
-                //수정본
-                var response = await _httpClient.PostAsJsonAsync("missions/middleware", value);
-                var jsonResponse = await response.Content.ReadAsStringAsync();
-
-                var missionQueueResponse = new ApiResponseDto
-                {
-                    statusCode = Convert.ToInt32(response.StatusCode),
-                    statusText = response.StatusCode.ToString(),
-                    message = jsonResponse
-                };
-                return missionQueueResponse;
-
-                //기존
-                //var response = await _httpClient.PostAsJsonAsync("api/Workers/mission_queue", value);
-                //var jsonResponse = await response.Content.ReadAsStringAsync();
-                //return JsonConvert.DeserializeObject<ApiPostResponseDtoMissionQueue>(jsonResponse);
-            }
-            //catch (Exception ex) when (True(() => _logger.Error(ex)))
-            catch (Exception ex) when (True(() => ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + ex)))
-            {
-                return null;
-            }
-        }
-
-        public async Task<ApiResponseDto> WorkerDeleteMissionQueueAsync(string id)
+        public async Task<ApResponseDto> WorkerDeleteMissionQueueAsync(string id)
         {
             if (!AcceptFilterUtility.WriteAccepted) { ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + $"-- API NOT ALLOWED. [{nameof(WorkerDeleteMissionQueueAsync)}] --"); return null; }
 
             try
             {
                 //수정본
-                var response = await _httpClient.DeleteAsync($"missions/worker/{id}");
+                var response = await _httpClient.DeleteAsync($"api/Workers/mission_queue/{id}");
                 var jsonResponse = await response.Content.ReadAsStringAsync();
 
-                var missionQueueResponse = new ApiResponseDto
+                var missionQueueResponse = new ApResponseDto
                 {
                     statusCode = Convert.ToInt32(response.StatusCode),
                     statusText = response.StatusCode.ToString(),
@@ -264,7 +118,7 @@ namespace RestApi.Interfases
             }
         }
 
-        public async Task<ApiResponseDto> MiddlewareDeleteMissionQueueAsync(string id)
+        public async Task<ApResponseDto> MiddlewareDeleteMissionQueueAsync(string id)
         {
             if (!AcceptFilterUtility.WriteAccepted) { ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + $"-- API NOT ALLOWED. [{nameof(MiddlewareDeleteMissionQueueAsync)}] --"); return null; }
 
@@ -274,7 +128,7 @@ namespace RestApi.Interfases
                 var response = await _httpClient.DeleteAsync($"api/missions/middleware/{id}");
                 var jsonResponse = await response.Content.ReadAsStringAsync();
 
-                var missionQueueResponse = new ApiResponseDto
+                var missionQueueResponse = new ApResponseDto
                 {
                     statusCode = Convert.ToInt32(response.StatusCode),
                     statusText = response.StatusCode.ToString(),
@@ -294,9 +148,69 @@ namespace RestApi.Interfases
             }
         }
 
-        public async Task<ApiResponseDto> PositionPatchAsync(string Id, object value)
+        public async Task<ApResponseDto> ElevatorPostCommandQueueAsync(object value)
         {
-            if (!AcceptFilterUtility.WriteAccepted) { ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + $"-- API NOT ALLOWED. [{nameof(MiddlewarePostMissionQueueAsync)}] --"); return null; }
+            if (!AcceptFilterUtility.WriteAccepted) { ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + $"-- API NOT ALLOWED. [{nameof(ElevatorPostCommandQueueAsync)}] --"); return null; }
+
+            try
+            {
+                //수정본
+                var response = await _httpClient.PostAsJsonAsync($"api/command", value);
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+
+                var missionQueueResponse = new ApResponseDto
+                {
+                    statusCode = Convert.ToInt32(response.StatusCode),
+                    statusText = response.StatusCode.ToString(),
+                    message = jsonResponse
+                };
+                return missionQueueResponse;
+
+                //기존
+                //var response = await _httpClient.PostAsJsonAsync("api/Workers/mission_queue", value);
+                //var jsonResponse = await response.Content.ReadAsStringAsync();
+                //return JsonConvert.DeserializeObject<ApiPostResponseDtoMissionQueue>(jsonResponse);
+            }
+            //catch (Exception ex) when (True(() => _logger.Error(ex)))
+            catch (Exception ex) when (True(() => ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + ex)))
+            {
+                return null;
+            }
+        }
+
+        public async Task<ApResponseDto> ElevatorDeleteCommandQueueAsync(string id)
+        {
+            if (!AcceptFilterUtility.WriteAccepted) { ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + $"-- API NOT ALLOWED. [{nameof(ElevatorPostCommandQueueAsync)}] --"); return null; }
+
+            try
+            {
+                //수정본
+                var response = await _httpClient.DeleteAsync($"api/command/{id}");
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+
+                var missionQueueResponse = new ApResponseDto
+                {
+                    statusCode = Convert.ToInt32(response.StatusCode),
+                    statusText = response.StatusCode.ToString(),
+                    message = jsonResponse
+                };
+                return missionQueueResponse;
+
+                //기존
+                //var response = await _httpClient.PostAsJsonAsync("api/Workers/mission_queue", value);
+                //var jsonResponse = await response.Content.ReadAsStringAsync();
+                //return JsonConvert.DeserializeObject<ApiPostResponseDtoMissionQueue>(jsonResponse);
+            }
+            //catch (Exception ex) when (True(() => _logger.Error(ex)))
+            catch (Exception ex) when (True(() => ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + ex)))
+            {
+                return null;
+            }
+        }
+
+        public async Task<ApResponseDto> PositionPatchAsync(string Id, object value)
+        {
+            if (!AcceptFilterUtility.WriteAccepted) { ApiLogger.Error($"IPAddress = {_httpClient.BaseAddress}" + "\r\n" + $"-- API NOT ALLOWED. [{nameof(PositionPatchAsync)}] --"); return null; }
 
             try
             {
@@ -304,7 +218,7 @@ namespace RestApi.Interfases
                 var response = await _httpClient.PatchAsJsonAsync($"api/positions/{Id}", value);
                 var jsonResponse = await response.Content.ReadAsStringAsync();
 
-                var missionQueueResponse = new ApiResponseDto
+                var missionQueueResponse = new ApResponseDto
                 {
                     statusCode = Convert.ToInt32(response.StatusCode),
                     statusText = response.StatusCode.ToString(),
