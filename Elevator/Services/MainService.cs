@@ -104,6 +104,7 @@ namespace Elevator.Services
                 }
                 catch (Exception ex)
                 {
+                    elevatorStateUpdate(nameof(State.DISCONNECT));
                     LogExceptionMessage(ex);
                 }
             }

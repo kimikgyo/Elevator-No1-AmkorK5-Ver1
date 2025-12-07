@@ -1,6 +1,7 @@
 ﻿using Common.Dtos;
 using Common.Dtos.Mqtts.Command;
 using Common.Dtos.Rests;
+using Common.Dtos.Rests.Command;
 using Common.Models;
 using System.Text.Json;
 

@@ -1,8 +1,4 @@
-﻿using Common.DTOs.Rests.Maps;
-using Common.DTOs.Rests.Positions;
-using Common.Models;
-using Data.Interfaces;
-using log4net;
+﻿using log4net;
 using Newtonsoft.Json;
 using static ExceptionFilterUtility;
 
