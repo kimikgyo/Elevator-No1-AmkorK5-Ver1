@@ -107,7 +107,14 @@ namespace Elevator_NO1.Services
                 if (Resource != null)
                 {
                     var mapping = _mapping.SettingMappings.Request(elevator);
-                    Resource.Api.Patch_Elevators_Async(elevator.id, mapping);
+                    var Patch = Resource.Api.Patch_Elevators_Async(elevator.id, mapping).Result;
+
+                    //[조건5] 상태코드 200~300 까지는 완료 처리
+                    if (Patch.statusCode >= 200 && Patch.statusCode < 300)
+                    {
+                        EventLogger.Info($"Patch Success , Message = {Patch.statusText}, mode = {mapping.mode}");
+                    }
+                    else EventLogger.Info($"Patch Failed, Message = {Patch.message}, mode = {mapping.mode}");
                 }
             }
         }
