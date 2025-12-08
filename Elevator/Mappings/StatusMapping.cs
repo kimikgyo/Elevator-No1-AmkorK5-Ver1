@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Xml.Linq;
 
-namespace Elevator1.Mappings
+namespace Elevator_NO1.Mappings
 {
     public class StatusMapping
     {

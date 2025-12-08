@@ -2,10 +2,10 @@
 using Common.Models.Queues;
 using Data;
 using Data.Interfaces;
-using Elevator1.Mappings.interfaces;
+using Elevator_NO1.Mappings.interfaces;
 using log4net;
 
-namespace Elevator1.MQTTs.interfaces
+namespace Elevator_NO1.MQTTs.interfaces
 {
     public class UnitofWorkMqttQueue : IUnitofWorkMqttQueue
     {

@@ -1,4 +1,4 @@
-﻿namespace Elevator1.MQTTs.interfaces
+﻿namespace Elevator_NO1.MQTTs.interfaces
 {
     public interface IMqttWorker
     {

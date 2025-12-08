@@ -1,10 +1,11 @@
 ﻿using Common.Models;
 using System.Text;
 
-namespace Elevator.Services
+namespace Elevator_NO1.Services
 {
-    public partial class MainService
+    public partial class Elevator_No1_Service
     {
+
         private byte[] MakeSendingData()
         {
             string sendMsg = "";

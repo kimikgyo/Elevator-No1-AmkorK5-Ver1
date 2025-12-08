@@ -1,4 +1,4 @@
-﻿namespace Elevator1.Mappings.interfaces
+﻿namespace Elevator_NO1.Mappings.interfaces
 {
     public interface IUnitOfWorkMapping : IDisposable
     {

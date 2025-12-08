@@ -5,7 +5,7 @@ using Common.Dtos.Rests.Command;
 using Common.Models;
 using System.Text.Json;
 
-namespace Elevator1.Mappings
+namespace Elevator_NO1.Mappings
 {
     public class CommandMapping
     {
