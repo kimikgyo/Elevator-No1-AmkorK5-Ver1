@@ -1,18 +1,20 @@
-﻿namespace Data
+﻿using Common.Models;
+
+namespace Data
 {
     public static class ConfigData
     {
+        public static List<ServiceApi> ServiceApis { get; set; }
         public static List<MqttTopicSubscribe> SubscribeTopics { get; set; }
         public static List<MqttTopicPublish> PublishTopics { get; set; }
         public static MQTTSetting MQTTSetting { get; set; }
-        public static ElevatorSetting ElevatorSetting { get; set; }
 
         public static void Load(IConfiguration configuration)
         {
+            ConfigData.ServiceApis = configuration.GetSection("ServiceApiInfo").Get<List<ServiceApi>>();
             ConfigData.MQTTSetting = configuration.GetSection("MQTTSetting").Get<MQTTSetting>();
             ConfigData.SubscribeTopics = configuration.GetSection("MqttTopicSubscribe").Get<List<MqttTopicSubscribe>>();
             ConfigData.PublishTopics = configuration.GetSection("MqttTopicPublish").Get<List<MqttTopicPublish>>();
-            ConfigData.ElevatorSetting = configuration.GetSection("ElevatorSetting").Get<ElevatorSetting>();
         }
     }
 

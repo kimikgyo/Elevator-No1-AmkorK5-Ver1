@@ -7,11 +7,11 @@ using System.Text.Json;
 
 namespace Elevator_NO1.Mappings
 {
-    public class CommandMapping
+    public class Command_Mapping
     {
-        public Get_CommandDto Response(Command model)
+        public Get_CommandDto Get(Command model)
         {
-            var response = new Get_CommandDto()
+            var Get = new Get_CommandDto()
             {
                 commnadId = model.commnadId,
                 name = model.name,
@@ -23,12 +23,12 @@ namespace Elevator_NO1.Mappings
                 parameters = JsonSerializer.Deserialize<List<Parameter>>(model.parameterJson),
             };
 
-            return response;
+            return Get;
         }
 
-        public Command APIAddRequest(Post_CommandDto aPIAddRequestDto, string actionName)
+        public Command Post(Post_CommandDto aPIAddRequestDto, string actionName)
         {
-            var add = new Command
+            var Post = new Command
             {
                 commnadId = aPIAddRequestDto.guid,
                 name = aPIAddRequestDto.name,
@@ -42,10 +42,10 @@ namespace Elevator_NO1.Mappings
                 createdAt = DateTime.Now,
             };
 
-            return add;
+            return Post;
         }
 
-        public Publish_CommandDto MqttPublishCommand(Command model)
+        public Publish_CommandDto Publish_Command(Command model)
         {
             var publish = new Publish_CommandDto()
             {

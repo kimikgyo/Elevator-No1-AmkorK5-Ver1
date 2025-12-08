@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
-namespace Elevator.Controllers
+namespace Elevator_NO1.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -43,7 +43,7 @@ namespace Elevator.Controllers
             var command = _repository.Commands.GetAll().FirstOrDefault();
             if (command != null)
             {
-                responseDto = _mapping.CommandMappings.Response(command);
+                responseDto = _mapping.CommandMappings.Get(command);
             }
 
             return Ok(responseDto);
@@ -60,18 +60,18 @@ namespace Elevator.Controllers
                 var command = CreateCommand(add);
                 if (command != null)
                 {
-                    logger.Info($"{this.ControllerLogPath()} Response = " +
+                    logger.Info($"{this.ControllerLogPath()} Get = " +
                                    $"Code = {Ok(message).StatusCode}" +
                                    $",massage = {Ok(message).Value}" +
                                    $",Date = {add}"
                                    );
                     _repository.Commands.Add(command);
-                    _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.command, _mapping.CommandMappings.MqttPublishCommand(command));
+                    _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.command, _mapping.CommandMappings.Publish_Command(command));
                     return Ok(add);
                 }
                 else
                 {
-                    logger.Info($"{this.ControllerLogPath()} Response = " +
+                    logger.Info($"{this.ControllerLogPath()} Get = " +
                           $"Code = {NotFound(message).StatusCode}" +
                           $",massage = {NotFound(message).Value}" +
                           $",Date = {add}"
@@ -81,7 +81,7 @@ namespace Elevator.Controllers
             }
             else
             {
-                logger.Info($"{this.ControllerLogPath()} Response = " +
+                logger.Info($"{this.ControllerLogPath()} Get = " +
                                  $"Code = {NotFound(message).StatusCode}" +
                                  $",massage = {NotFound(message).Value}" +
                                  $",Date = {add}"
@@ -103,7 +103,7 @@ namespace Elevator.Controllers
 
                 if (actionName != null)
                 {
-                    command = _mapping.CommandMappings.APIAddRequest(addRequestDto, actionName);
+                    command = _mapping.CommandMappings.Post(addRequestDto, actionName);
                 }
             }
 
@@ -169,7 +169,7 @@ namespace Elevator.Controllers
                     command.updatedAt = DateTime.Now;
                     _repository.Commands.Update(command);
                 }
-                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.command, _mapping.CommandMappings.MqttPublishCommand(command));
+                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.command, _mapping.CommandMappings.Publish_Command(command));
             }
         }
     }

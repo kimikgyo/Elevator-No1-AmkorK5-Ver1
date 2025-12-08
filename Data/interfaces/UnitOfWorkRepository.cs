@@ -1,4 +1,5 @@
 ﻿using Data.Repositorys;
+using Data.Repositorys.Services;
 using System.Data;
 
 namespace Data.Interfaces
@@ -17,6 +18,8 @@ namespace Data.Interfaces
 
         public CommandRepository Commands { get; private set; }
         public StatusRepository ElevatorStatus { get; private set; }
+        public ServiceApiRepository ServiceApis { get; private set; }
+        public SettingRepository Settings { get; private set; }
 
         public UnitOfWorkRepository()
         {
@@ -27,6 +30,8 @@ namespace Data.Interfaces
         {
             Commands = new CommandRepository(connectionString);
             ElevatorStatus = new StatusRepository(connectionString);
+            ServiceApis = new ServiceApiRepository(connectionString);
+            Settings = new SettingRepository(connectionString);
         }
 
         public void SaveChanges()

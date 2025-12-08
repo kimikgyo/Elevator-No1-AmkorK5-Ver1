@@ -2,7 +2,8 @@
 {
     public interface IUnitOfWorkMapping : IDisposable
     {
-        StatusMapping StatusMappings { get; }
-        CommandMapping CommandMappings { get; }
+        Status_Mapping StatusMappings { get; }
+        Command_Mapping CommandMappings { get; }
+        Setting_Mapping SettingMappings { get; }
     }
 }

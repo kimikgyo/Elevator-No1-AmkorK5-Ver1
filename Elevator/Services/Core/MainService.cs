@@ -4,6 +4,7 @@ using Data;
 using Data.Interfaces;
 using Elevator_NO1.Mappings.interfaces;
 using Elevator_NO1.MQTTs.interfaces;
+using Elevator_NO1.Services.Data;
 using log4net;
 using System.Diagnostics;
 using System.Globalization;
@@ -20,6 +21,7 @@ namespace Elevator_NO1.Services
         private Status elevator = null;
         private MQTTService mQTT = null;
         private Elevator_No1_Service elevator_No1 = null;
+        private Response_Data response_Data = null;
         private readonly IUnitOfWorkRepository _repository;
         private readonly IUnitOfWorkMapping _mapping;
         private readonly IUnitofWorkMqttQueue _mqttQueue;
@@ -40,7 +42,7 @@ namespace Elevator_NO1.Services
         {
             elevator_No1 = new Elevator_No1_Service(main, _repository, _mapping, _mqttQueue, _mqtt);
             mQTT = new MQTTService(_mqtt, _mqttQueue);
-            createStatus();
+            response_Data = new Response_Data(EventLogger, _repository, _mapping);
         }
 
         private void Start()
@@ -51,8 +53,17 @@ namespace Elevator_NO1.Services
         private async Task stratAsync()
         {
             Start();
-            mQTT.Start();
-            elevator_No1.Start();
+            bool response_DataCompleted = await response_Data.StartAsyc();
+            if (response_DataCompleted)
+            {
+                var setting = _repository.Settings.GetAll().FirstOrDefault(e => e.id == "NO1");
+                if (setting != null)
+                {
+                    createStatus(setting.id, setting.mode);
+                    mQTT.Start();
+                    elevator_No1.Start();
+                }
+            }
         }
 
         /// <summary>
@@ -63,7 +74,7 @@ namespace Elevator_NO1.Services
             // 1. 스케줄러 정지 (Task 종료될 때까지 대기)
             await elevator_No1.StopAsync();
             // StopAsync 내부에서 while 루프 빠져나오고 Task.WhenAll() 대기하도록 구현
-            bool Response_Data_Complete = await Response_Data.StartAsyc();
+            bool Response_Data_Complete = await response_Data.StartAsyc();
             if (Response_Data_Complete)
             {
                 //// 3. MQTT 다시 시작 (필요시)
@@ -101,22 +112,19 @@ namespace Elevator_NO1.Services
             EventLogger.Info(message + "\n[StackTrace]\n" + ex.StackTrace);
         }
 
- 
-
-        private void createStatus()
+        private void createStatus(string id, string mode)
         {
             this.elevator = new Status
             {
-                id = ConfigData.ElevatorSetting.id,
-                mode = ConfigData.ElevatorSetting.mode,
+                id = id,
+                mode = mode,
                 name = "Elevator",
                 state = nameof(State.DISCONNECT),
                 createAt = DateTime.Now,
             };
             _repository.ElevatorStatus.Add(elevator);
-            _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
+            _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.Publish_Status(elevator));
         }
-
 
         /// <summary>
         /// 생성된 로그 폴더 구조(날짜 폴더 → JobScheduler → 파일)에 맞추어

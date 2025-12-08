@@ -1,4 +1,5 @@
 ﻿using Data.Repositorys;
+using Data.Repositorys.Services;
 
 namespace Data.Interfaces
 {
@@ -6,6 +7,8 @@ namespace Data.Interfaces
     {
         CommandRepository Commands { get; }
         StatusRepository ElevatorStatus { get; }
+        ServiceApiRepository ServiceApis { get; }
+        SettingRepository Settings { get; }
 
         void SaveChanges();
     }

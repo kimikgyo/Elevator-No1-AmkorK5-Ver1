@@ -1,5 +1,4 @@
 ﻿using Common.Models;
-using Data;
 using System.Net.Sockets;
 using System.Text;
 
@@ -7,47 +6,57 @@ namespace Elevator_NO1.Services
 {
     public partial class Elevator_No1_Service
     {
-       
         public async void ElevatorTCPClient()
         {
-            while (true)
+            try
             {
-                try
+                EventLogger.Info("[ElevatorTCPClient Task] Start");  // 루프 시작 로그
+                var setting = _repository.Settings.GetAll().FirstOrDefault(r => r.id == "NO1");
+                while (_running && setting != null)
                 {
-                    //await Task.Delay(500); // <=========================== 노드간 통신 간격
-                    await Task.Delay(500); // <=========================== 노드간 통신 간격
-
-                    bool recv_good = false;
-
-                    recv_good = await SendRecvAsync();
-
-                    if (recv_good)                         //정상적인 데이터를 읽어왔는지 확인
+                    try
                     {
-                        ConnectedCount = 0;
-                        //컨넥트 이벤트
-                        elevatorStateUpdate(nameof(State.CONNECT));
-                    }
-                    else
-                    {
-                        if (ConnectedCount == 10)
+                        //await Task.Delay(500); // <=========================== 노드간 통신 간격
+                        await Task.Delay(500); // <=========================== 노드간 통신 간격
+                        int port = int.Parse(setting.port);
+                        int timeout = int.Parse(setting.timeout);
+                        string ip = setting.ip;
+
+                        bool recv_good = false;
+
+                        recv_good = await SendRecvAsync(ip, port, timeout);
+
+                        if (recv_good)                         //정상적인 데이터를 읽어왔는지 확인
                         {
-                            elevatorStateUpdate(nameof(State.DISCONNECT));
                             ConnectedCount = 0;
+                            //컨넥트 이벤트
+                            elevatorStateUpdate(nameof(State.CONNECT));
                         }
-                        else ConnectedCount++;
+                        else
+                        {
+                            if (ConnectedCount == 10)
+                            {
+                                elevatorStateUpdate(nameof(State.DISCONNECT));
+                                ConnectedCount = 0;
+                            }
+                            else ConnectedCount++;
+                        }
+                        await Task.Delay(1); // <=========================== 루프 통신 딜레이
                     }
-                    await Task.Delay(1); // <=========================== 루프 통신 딜레이
+                    catch (Exception ex)
+                    {
+                        elevatorStateUpdate(nameof(State.DISCONNECT));
+                        main.LogExceptionMessage(ex);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    elevatorStateUpdate(nameof(State.DISCONNECT));
-                    main.LogExceptionMessage(ex);
-                }
+            }
+            finally
+            {
+                EventLogger.Info("[ElevatorTCPClient Task] Stop");  // 루프 정지 로그
             }
         }
 
-
-        private async Task<bool> SendRecvAsync()
+        private async Task<bool> SendRecvAsync(string ip, int port, int timeout)
         {
             //ILog("ip = " + PlcIpAddress);
             byte[] sendData = MakeSendingData();
@@ -56,9 +65,9 @@ namespace Elevator_NO1.Services
             {
                 using (var client = new TcpClient())
                 {
-                    var cancelTask = Task.Delay(int.Parse(ConfigData.ElevatorSetting.timeout)); // <=========================== 연결타임아웃 시간
+                    var cancelTask = Task.Delay(timeout); // <=========================== 연결타임아웃 시간
                     //시뮬레이터 Test
-                    var connectTask = client.ConnectAsync(ConfigData.ElevatorSetting.ip, int.Parse(ConfigData.ElevatorSetting.port));
+                    var connectTask = client.ConnectAsync(ip, port);
 
                     var completedTask = await Task.WhenAny(connectTask, cancelTask);
 

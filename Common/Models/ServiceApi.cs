@@ -16,6 +16,7 @@ namespace Common.Models
             }
         }
 
+
         public string type { get; set; }
         public string subType { get; set; }
         public string ip { get; set; }
@@ -24,5 +25,4 @@ namespace Common.Models
         public string connectPassword { get; set; } = string.Empty;
         public string timeOut { get; set; } = "5000";
     }
-
 }

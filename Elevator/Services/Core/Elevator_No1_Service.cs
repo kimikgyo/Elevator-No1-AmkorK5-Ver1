@@ -1,12 +1,9 @@
 ﻿using Common.Dtos;
 using Common.Models;
-using Data;
 using Data.Interfaces;
 using Elevator_NO1.Mappings.interfaces;
 using Elevator_NO1.MQTTs.interfaces;
 using log4net;
-using System.Net.Sockets;
-using System.Text;
 
 namespace Elevator_NO1.Services
 {
@@ -85,12 +82,12 @@ namespace Elevator_NO1.Services
                 try
                 {
                     await Task.WhenAll(_tasks);  // 모든 Task 종료 대기
-                    EventLogger.Info($"[StopAsync] Scheduler Task Stop");
+                    EventLogger.Info($"[StopAsync] Elevator_No1 Task Stop");
                 }
                 catch (Exception ex)
                 {
                     // Task 내부 예외 로깅
-                    EventLogger.Info($"[StopAsync] Scheduler Task Stop Error : {ex.Message}");
+                    EventLogger.Info($"[StopAsync] Elevator_No1 Task Stop Error : {ex.Message}");
                 }
             }
 
@@ -105,7 +102,13 @@ namespace Elevator_NO1.Services
                 elevator.mode = mode;
                 elevator.updateAt = DateTime.Now;
                 _repository.ElevatorStatus.Update(elevator);
-                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
+                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.Publish_Status(elevator));
+                var Resource = _repository.ServiceApis.GetAll().FirstOrDefault(r => r.type == "Resource");
+                if (Resource != null)
+                {
+                    var mapping = _mapping.SettingMappings.Request(elevator);
+                    Resource.Api.Patch_Elevators_Async(elevator.id, mapping);
+                }
             }
         }
 
@@ -120,7 +123,7 @@ namespace Elevator_NO1.Services
                 elevator.state = state;
                 elevator.updateAt = DateTime.Now;
                 _repository.ElevatorStatus.Update(elevator);
-                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.MqttPublishStatus(elevator));
+                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.Publish_Status(elevator));
             }
         }
 
@@ -140,7 +143,7 @@ namespace Elevator_NO1.Services
                     command.updatedAt = DateTime.Now;
                     _repository.Commands.Update(command);
                 }
-                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.command, _mapping.CommandMappings.MqttPublishCommand(command));
+                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.command, _mapping.CommandMappings.Publish_Command(command));
             }
         }
     }
