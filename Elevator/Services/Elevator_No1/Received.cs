@@ -1,7 +1,6 @@
 ﻿using Common.Dtos;
 using Common.Models;
 using System.Text;
-using System.Text.Json;
 
 namespace Elevator_NO1.Services
 {
@@ -9,47 +8,89 @@ namespace Elevator_NO1.Services
     {
         private bool MakeRecvData(byte[] data)
         {
-            string recvDataLength = string.Empty; //EnCodig Data
-            int recvLengthIndex = 8;        //index 0~7까지 8개의 객체가 객체 수량임
+            string recvDataLength = string.Empty; // 헤더 길이 문자열
+            int headerLength = 8;                 // index 0~7까지 8개의 문자가 길이
             bool returnValue = false;
             string strBuffer = string.Empty;
+
+            if (data == null)
+            {
+                EventLogger.Warn($"[Elevator][MakeRecvData] : data 가 null 입니다.");
+                return false;
+            }
+
+            if (data.Length < headerLength)
+            {
+                EventLogger.Warn($"[Elevator][MakeRecvData] : 데이터 길이가 너무 짧습니다. data.Length=" + data.Length);
+                return false;
+            }
+
             try
             {
-                //Recv Data 객체 수량을 확인
-                //Recv Data 중 index 0~7까지 8개의 객체가 객체 수량임
-                recvDataLength += Encoding.ASCII.GetString(data, 0, recvLengthIndex);
+                // 1) 헤더(길이) 부분 추출 (0~7)
+                recvDataLength = Encoding.ASCII.GetString(data, 0, headerLength);
 
-                //Recv Data 객체 추출
-                //index 7~n 객체 수량까지가 사용할 Data
-                strBuffer += Encoding.ASCII.GetString(data, recvLengthIndex, Convert.ToInt32(recvDataLength));
+                int bodyMinLength = Convert.ToInt32(recvDataLength);   // 최소 보장 길이(기본 프레임 길이)
+                int availableLength = data.Length - headerLength;      // 실제로 들어온 본문 길이
 
-                if (Convert.ToInt32(recvDataLength) == strBuffer.Length)
+                // 2) 실제 길이가 최소 길이보다 짧으면 → 패킷이 덜 온 것
+                if (availableLength < bodyMinLength)
+                {
+                    EventLogger.Warn($"[Elevator][MakeRecvData] : 본문 길이가 부족합니다. Header={bodyMinLength}, Available={availableLength}");
+
+                    return false;
+                }
+
+                // 3) ★ 중요: 기본 프레임 길이(bodyMinLength)까지만이 아니라
+                //    실제로 들어온 전체 본문(availableLength)을 모두 읽는다.
+                //    예) Cmd=...까지만이 아니라 &Result=...&ErrMsg=... 도 같이 포함
+                strBuffer = Encoding.ASCII.GetString(data, headerLength, availableLength);
+
+                ProtocolLogger.Info($"[Elevator][MakeRecvData] : HeaderMinLength={bodyMinLength}, ActualBodyLength={strBuffer.Length}, Body={strBuffer}");
+
+                // 4) 최소 길이는 만족해야 한다.
+                //    (정상 응답은 보통 bodyMinLength == strBuffer.Length겠지만,
+                //     에러 응답처럼 추가 필드가 붙은 경우는 bodyMinLength < strBuffer.Length 도 허용)
+                if (strBuffer.Length >= bodyMinLength)
                 {
                     ReceivedProtocol(strBuffer);
                     returnValue = true;
                 }
                 else
                 {
+                    EventLogger.Warn($"[Elevator][MakeRecvData] : 본문 문자열 길이가 헤더의 최소 길이보다 짧습니다. HeaderMin={bodyMinLength}, Actual={strBuffer.Length}");
                     returnValue = false;
                 }
             }
             catch (Exception ex)
             {
                 main.LogExceptionMessage(ex);
+                returnValue = false;
             }
+
             return returnValue;
         }
 
         private void ReceivedProtocol(string recvMsg)
         {
-            //Recv데이터를 ElevatorModel 변수에 넣기
+            if (string.IsNullOrEmpty(recvMsg))
+            {
+                EventLogger.Warn($"[Elevator][ReceivedProtocol] : recvMsg 가 비어 있습니다.");
+                return;
+            }
+
+            //ProtocolLogger.Info($"[Elevator][{nameof(ReceivedProtocol)}] : 수신 메시지 = {recvMsg}");
+
             ProtocolDto protocolDto = GetElevatorModelData(recvMsg);
+
             if (protocolDto.ErrCode > 0)
             {
+                EventLogger.Warn($"[Elevator][ReceivedProtocol] : ErrCode={protocolDto.ErrCode}");
                 elevatorStateUpdate(nameof(State.PROTOCOLERROR));
             }
-            else if (protocolDto.Result != null && protocolDto.Result != "" && protocolDto.Result != "ok")
+            else if (protocolDto.Result != null && protocolDto.Result != string.Empty && protocolDto.Result != "ok")
             {
+                EventLogger.Warn($"[Elevator][ReceivedProtocol] : Result={protocolDto.Result}");
                 elevatorStateUpdate(nameof(State.PROTOCOLERROR));
             }
             else
@@ -147,112 +188,119 @@ namespace Elevator_NO1.Services
 
         private ProtocolDto GetElevatorModelData(string recvMsg)
         {
-            // 1.상시 엘리베이터 상태 요청
-            // 2.상시 엘리베이터 상태 응답
-            // 2.MiR 운전 제어 요청
-            // 3.MiR 운전 제어 응답
-            // 4.출발층 Elevator Call요청
-            // 5.출발층 Elevator Call요청 응답
-            // 6.출발층 으로 Elevator 도착시까지 상태요청
-            // 7.출발층 Elevator 상태 응답중 Floor / Door / Dir /Hall_Up및 Hall_Dn 신호로 도착확인
-            // 8.출발층 Elevator 도착 후 MiR 진입 신호 전달
-            // 9.출발층 Elevator MiR 진입 완료까지 door Open 신호 요청
-            // 10.출발층 MiR 진입완료후 목적지층으로 이동 요청 신호
-            // 11.출발층 Elevator 목적지층 이동 요청신호 응답
-            // 12.출발층 Elevator Door Close 요청 신호
-            // 13.출발층 Elevator Door Close 요청 응답
-            // 14.목적지층 으로 Elevator 도착시까지 상태요청
-            // 15.목적지층 Elevator 상태 응답중 Floor / Door / Dir /Hall_Up및 Hall_Dn 신호로 도착확인
-            // 16.목적지층 Elevator MiR 진출 완료까지 Door Open 신호 요청
-            // 17.목적지층 MiR 진출 완료후 Door Close요청
-            // 18.MiR 운전 제어 해제 신호
-            // 19.MiR 운전 제어 해제 신호 응답
+            //ProtocolLogger.Info("GetElevatorModelData() : 파싱 시작. Raw=\"" + recvMsg + "\"");
 
-            //"&","^"두개의 문자 잘라서 배열로 반환한다
             string[] splitData = recvMsg.Split(new string[] { "&", "^", "\r\n" }, StringSplitOptions.None);
+
             protocol_Init();
-            foreach (var Data in splitData)
+
+            foreach (string Data in splitData)
             {
-                if (Data.Contains("Cmd="))
+                if (string.IsNullOrEmpty(Data))
                 {
-                    //Data에 해당 문자가 있으면 초기화 후 진행
-                    //문자 바꾸기 하여 Cmd=문자를 ""빈문자로 변경
-                    elevatorProtocolDto.Cmd = Convert.ToInt32(Data.Replace("Cmd=", ""));
+                    continue;
                 }
-                else if (Data.Contains("AId=") || Data.Contains("Aid="))
+
+                try
                 {
-                    if (Data.Contains("AId=")) elevatorProtocolDto.AId = Convert.ToInt32(Data.Replace("AId=", ""));
-                    else if (Data.Contains("Aid=")) elevatorProtocolDto.AId = Convert.ToInt32(Data.Replace("Aid=", ""));
+                    if (Data.Contains("Cmd="))
+                    {
+                        elevatorProtocolDto.Cmd = Convert.ToInt32(Data.Replace("Cmd=", ""));
+                    }
+                    else if (Data.Contains("AId=") || Data.Contains("Aid="))
+                    {
+                        if (Data.Contains("AId="))
+                            elevatorProtocolDto.AId = Convert.ToInt32(Data.Replace("AId=", ""));
+                        else if (Data.Contains("Aid="))
+                            elevatorProtocolDto.AId = Convert.ToInt32(Data.Replace("Aid=", ""));
+                    }
+                    else if (Data.Contains("Count="))
+                    {
+                        elevatorProtocolDto.Count = Convert.ToInt32(Data.Replace("Count=", ""));
+                    }
+                    else if (Data.Contains("DId="))
+                    {
+                        elevatorProtocolDto.Dld = Convert.ToInt32(Data.Replace("DId=", ""));
+                    }
+                    else if (Data.Contains("Status="))
+                    {
+                        elevatorProtocolDto.Status = Convert.ToInt32(Data.Replace("Status=", ""));
+                    }
+                    else if (Data.Contains("Floor="))
+                    {
+                        elevatorProtocolDto.Floor = Convert.ToInt32(Data.Replace("Floor=", ""));
+                    }
+                    else if (Data.Contains("Dir="))
+                    {
+                        elevatorProtocolDto.Dir = Convert.ToInt32(Data.Replace("Dir=", ""));
+                    }
+                    else if (Data.Contains("Door="))
+                    {
+                        elevatorProtocolDto.Door = Convert.ToInt32(Data.Replace("Door=", ""));
+                    }
+                    else if (Data.Contains("car_f="))
+                    {
+                        elevatorProtocolDto.car_f = Convert.ToInt32(Data.Replace("car_f=", ""));
+                    }
+                    else if (Data.Contains("car_r="))
+                    {
+                        elevatorProtocolDto.car_r = Convert.ToInt32(Data.Replace("car_r=", ""));
+                    }
+                    else if (Data.Contains("Hallup_f="))
+                    {
+                        elevatorProtocolDto.Hallup_f = Convert.ToInt32(Data.Replace("Hallup_f=", ""));
+                    }
+                    else if (Data.Contains("Hallup_r="))
+                    {
+                        elevatorProtocolDto.Hallup_r = Convert.ToInt32(Data.Replace("Hallup_r=", ""));
+                    }
+                    else if (Data.Contains("HallDn_f="))
+                    {
+                        elevatorProtocolDto.HallDn_f = Convert.ToInt32(Data.Replace("HallDn_f=", ""));
+                    }
+                    else if (Data.Contains("HallDn_r="))
+                    {
+                        elevatorProtocolDto.HallDn_r = Convert.ToInt32(Data.Replace("HallDn_r=", ""));
+                    }
+                    else if (Data.Contains("ErrCode="))
+                    {
+                        elevatorProtocolDto.ErrCode = Convert.ToInt32(Data.Replace("ErrCode=", ""));
+                    }
+                    else if (Data.Contains("Param="))
+                    {
+                        elevatorProtocolDto.Param = Convert.ToInt32(Data.Replace("Param=", ""));
+                    }
+                    else if (Data.Contains("Data="))
+                    {
+                        elevatorProtocolDto.Data = Convert.ToInt32(Data.Replace("Data=", ""));
+                    }
+                    else if (Data.Contains("Dest="))
+                    {
+                        elevatorProtocolDto.Dest = Convert.ToInt32(Data.Replace("Dest=", ""));
+                    }
+                    else if (Data.Contains("Result="))
+                    {
+                        elevatorProtocolDto.Result = Data.Replace("Result=", "");
+                    }
                 }
-                else if (Data.Contains("Count="))
+                catch (Exception ex)
                 {
-                    elevatorProtocolDto.Count = Convert.ToInt32(Data.Replace("Count=", ""));
-                }
-                else if (Data.Contains("DId="))
-                {
-                    elevatorProtocolDto.Dld = Convert.ToInt32(Data.Replace("DId=", ""));
-                }
-                else if (Data.Contains("Status="))
-                {
-                    elevatorProtocolDto.Status = Convert.ToInt32(Data.Replace("Status=", ""));
-                }
-                else if (Data.Contains("Floor="))
-                {
-                    elevatorProtocolDto.Floor = Convert.ToInt32(Data.Replace("Floor=", ""));
-                }
-                else if (Data.Contains("Dir="))
-                {
-                    elevatorProtocolDto.Dir = Convert.ToInt32(Data.Replace("Dir=", ""));
-                }
-                else if (Data.Contains("Door="))
-                {
-                    elevatorProtocolDto.Door = Convert.ToInt32(Data.Replace("Door=", ""));
-                }
-                else if (Data.Contains("car_f="))
-                {
-                    elevatorProtocolDto.car_f = Convert.ToInt32(Data.Replace("car_f=", ""));
-                }
-                else if (Data.Contains("car_r="))
-                {
-                    elevatorProtocolDto.car_r = Convert.ToInt32(Data.Replace("car_r=", ""));
-                }
-                else if (Data.Contains("Hallup_f="))
-                {
-                    elevatorProtocolDto.Hallup_f = Convert.ToInt32(Data.Replace("Hallup_f=", ""));
-                }
-                else if (Data.Contains("Hallup_r="))
-                {
-                    elevatorProtocolDto.Hallup_r = Convert.ToInt32(Data.Replace("Hallup_r=", ""));
-                }
-                else if (Data.Contains("HallDn_f="))
-                {
-                    elevatorProtocolDto.HallDn_f = Convert.ToInt32(Data.Replace("HallDn_f=", ""));
-                }
-                else if (Data.Contains("HallDn_r="))
-                {
-                    elevatorProtocolDto.HallDn_r = Convert.ToInt32(Data.Replace("HallDn_r=", ""));
-                }
-                else if (Data.Contains("ErrCode="))
-                {
-                    elevatorProtocolDto.ErrCode = Convert.ToInt32(Data.Replace("ErrCode=", ""));
-                }
-                else if (Data.Contains("Param="))
-                {
-                    elevatorProtocolDto.Param = Convert.ToInt32(Data.Replace("Param=", ""));
-                }
-                else if (Data.Contains("Data="))
-                {
-                    elevatorProtocolDto.Data = Convert.ToInt32(Data.Replace("Data=", ""));
-                }
-                else if (Data.Contains("Dest="))
-                {
-                    elevatorProtocolDto.Dest = Convert.ToInt32(Data.Replace("Dest=", ""));
-                }
-                else if (Data.Contains("Result="))
-                {
-                    elevatorProtocolDto.Result = Data.Replace("Result=", "");
+                    // 이 토큰만 잘못된 경우: 전체를 죽이지 않고 로그만 남기고 다음 토큰으로 진행
+                    EventLogger.Warn($"[Elevator][GetElevatorModelData] : 파싱 실패. Token={Data}");
+                    main.LogExceptionMessage(ex);
                 }
             }
+
+            //ProtocolLogger.Info(
+            //    "GetElevatorModelData() : 파싱 완료. " +"Cmd=" + elevatorProtocolDto.Cmd +
+            //    ", AId=" + elevatorProtocolDto.AId +
+            //    ", DId=" + elevatorProtocolDto.Dld +
+            //    ", Floor=" + elevatorProtocolDto.Floor +
+            //    ", Door=" + elevatorProtocolDto.Door +
+            //    ", ErrCode=" + elevatorProtocolDto.ErrCode +
+            //    ", Result=" + elevatorProtocolDto.Result
+            //);
+
             return elevatorProtocolDto;
         }
     }

@@ -64,8 +64,7 @@ namespace Common.Models
 
         //[JsonPropertyOrder(9)] public string preReportsjson { get; set; }
         //[JsonPropertyOrder(10)] public string postReportsjson { get; set; }
-        [JsonPropertyOrder(11)] public DateTime createdAt { get; set; }
-
+        [JsonPropertyOrder(11)] public DateTime  createdAt { get; set; }
         [JsonPropertyOrder(12)] public DateTime? updatedAt { get; set; }
         [JsonPropertyOrder(13)] public DateTime? finishedAt { get; set; }
 
