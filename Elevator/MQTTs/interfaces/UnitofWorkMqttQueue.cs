@@ -1,9 +1,11 @@
-﻿using Common.Models;
+﻿using Common.Dtos.Mqtts.Cameras;
+using Common.Models;
 using Common.Models.Queues;
 using Data;
 using Data.Interfaces;
 using Elevator_NO1.Mappings.interfaces;
 using log4net;
+using System.Text.Json;
 
 namespace Elevator_NO1.MQTTs.interfaces
 {
@@ -66,8 +68,27 @@ namespace Elevator_NO1.MQTTs.interfaces
         {
             switch (subscribe.type)
             {
+                case nameof(TopicType.elevator):
+                    if (subscribe.id == "camera")
+                    {
+                        var cameraState = JsonSerializer.Deserialize<Subscribe_CarmeraStatusDto>(subscribe.Payload!);
+                        if (cameraState.ElevatorId == "NO1")
+                        {
+                            if (cameraState.Sensing == "ON")
+                            {
+                                _mqttProcess.elevatorStateUpdate(nameof(State.PAUSE));
+                            }
+                            else
+                            {
+                                _mqttProcess.elevatorStateUpdate(nameof(State.RESUME));
+                            }
+                        }
+                    }
+                    break;
             }
         }
+
+    
 
         public void HandleReceivedMqttMessage()
         {

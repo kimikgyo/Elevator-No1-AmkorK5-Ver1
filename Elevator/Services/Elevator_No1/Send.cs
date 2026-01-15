@@ -48,133 +48,159 @@ namespace Elevator_NO1.Services
         {
             string sendMsg = string.Empty;
 
-            // ------------------------------------------------------------
-            // [1] 1순위: Commands 에 PENDING 또는 REQUEST 상태의 명령이 있는 경우
-            // ------------------------------------------------------------
-            var command = _repository.Commands.GetAll().FirstOrDefault(c => c.state == nameof(CommandState.PENDING) || c.state == nameof(CommandState.REQUEST));
+            var elevator = _repository.ElevatorStatus.GetAll().FirstOrDefault();
 
-            if (command != null)
+            if (elevator == null)
             {
-                EventLogger.Info($"[Elevator][Sending] Command 감지. Id={command.commnadId}, Action={command.actionName}, State={command.state}");
-
-                switch (command.actionName)
-                {
-                    case nameof(CommandAction.DOOROPEN):
-                        sendMsg = "Cmd=20&AId=1&DId=1&Param=05&Data=00&Dest=00";
-                        ProtocolLogger.Info("[Elevator][Sending] DOOROPEN Messgae.");
-                        break;
-
-                    case nameof(CommandAction.DOORCLOSE):
-                        sendMsg = "Cmd=20&AId=1&DId=1&Param=06&Data=00&Dest=00";
-                        ProtocolLogger.Info("[Elevator][Sending] DOORCLOSE Messgae.");
-                        break;
-
-                    case nameof(CommandAction.CALL_B1F):
-                    case nameof(CommandAction.GOTO_B1F):
-                        sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=01&Dest=01";
-                        ProtocolLogger.Info("[Elevator][Sending] B1F Call/Goto Messgae.");
-                        break;
-
-                    case nameof(CommandAction.CALL_1F):
-                    case nameof(CommandAction.GOTO_1F):
-                        sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=02&Dest=02";
-                        ProtocolLogger.Info("[Elevator][Sending] 1F Call/Goto Messgae.");
-                        break;
-
-                    case nameof(CommandAction.CALL_2F):
-                    case nameof(CommandAction.GOTO_2F):
-                        sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=03&Dest=03";
-                        ProtocolLogger.Info("[Elevator][Sending] 2F Call/Goto Messgae.");
-                        break;
-
-                    case nameof(CommandAction.CALL_3F):
-                    case nameof(CommandAction.GOTO_3F):
-                        sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=04&Dest=04";
-                        ProtocolLogger.Info("[Elevator][Sending] 3F Call/Goto Messgae.");
-                        break;
-
-                    case nameof(CommandAction.CALL_4F):
-                    case nameof(CommandAction.GOTO_4F):
-                        sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=05&Dest=05";
-                        ProtocolLogger.Info("[Elevator][Sending] 4F Call/Goto Messgae.");
-                        break;
-
-                    case nameof(CommandAction.CALL_5F):
-                    case nameof(CommandAction.GOTO_5F):
-                        sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=06&Dest=06";
-                        ProtocolLogger.Info("[Elevator][Sending] 5F Call/Goto Messgae.");
-                        break;
-
-                    case nameof(CommandAction.CALL_6F):
-                    case nameof(CommandAction.GOTO_6F):
-                        sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=07&Dest=07";
-                        ProtocolLogger.Info("[Elevator][Sending] 6F Call/Goto Messgae.");
-                        break;
-
-                    case nameof(CommandAction.AGVMODE):
-                        // Param = 09 AGV운전 명령 , Data = 1이면 제어 , Dest = 00으로 고정
-                        sendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=01&Dest=00";
-                        ProtocolLogger.Info("[Elevator][Sending] AGV Mode Change Messgae (Data=01).");
-                        break;
-
-                    case nameof(CommandAction.NOTAGVMODE):
-                        // Param = 09 AGV운전 명령 , Data = 0이면 비제어 , Dest = 00으로 고정
-                        sendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=00&Dest=00";
-                        ProtocolLogger.Info("[Elevator][Sending] NOT AGV Mode Change Messgae (Data=00).");
-                        break;
-
-                    default:
-                        // 정의되지 않은 Action 이 들어온 경우
-                        ProtocolLogger.Warn($"[Elevator][Sending] 정의되지 않은 CommandAction: {command.actionName}. 송신 명령 없음.");
-                        break;
-                }
-
-                return sendMsg;
+                ProtocolLogger.Warn("[Elevator][Sending] ElevatorStatus 가 null 입니다. 모드 전환 명령을 전송하지 않습니다.");
+                return string.Empty;
             }
 
-            // ------------------------------------------------------------
-            // [2] 2순위: Command 가 없을 때는 상태/모드 기반 처리
-            //      - ModeCheck == false : 아직 모드 조회 안 함 → 상태 조회(Cmd=10) 요청
-            //      - ModeCheck == true  : 이전에 상태 요청을 보냈고, 이번엔 DB 상태값 보고 모드 변경
-            // ------------------------------------------------------------
-            if (!ModeCheck)
+            if (elevator.state == nameof(State.PAUSE))
             {
-                // 아직 모드 확인을 안한 상태 → 모드 조회 명령 전송
-                sendMsg = "Cmd=10&AId=1&DId=1";
-                ModeCheck = true;
-
-                ProtocolLogger.Info("[Elevator][Sending] default Status Messgae.");
-            }
-            else
-            {
-                // ModeCheck == true 인 상태 → ElevatorStatus 테이블 기준으로 모드 전환
-                var status = _repository.ElevatorStatus.GetAll().FirstOrDefault();
-
-                if (status == null)
-                {
-                    ProtocolLogger.Warn("[Elevator][Sending] ElevatorStatus 가 null 입니다. 모드 전환 명령을 전송하지 않습니다.");
-                    return string.Empty;
-                }
-
-                //ProtocolLogger.Info($"[Elevator] ElevatorStatus 확인. mode={status.mode}");
-
-                switch (status.mode)
+                switch (elevator.mode)
                 {
                     case nameof(Mode.AGVMODE):
                         sendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=01&Dest=00";
                         ModeCheck = false;
-                        ProtocolLogger.Info("[Elevator][Sending] AGV Mode Change Messgae (Param=09, Data=01).");
+                        ProtocolLogger.Info("[Elevator][Sending][PAUSE] AGV Mode Change Messgae (Param=09, Data=01).");
                         break;
 
                     case nameof(Mode.NOTAGVMODE):
                         sendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=00&Dest=00";
                         ModeCheck = false;
-                        ProtocolLogger.Info("[Elevator][Sending] NOT AGV Mode Change Messgae (Param=09, Data=00).");
+                        ProtocolLogger.Info("[Elevator][Sending][PAUSE] NOT AGV Mode Change Messgae (Param=09, Data=00).");
                         break;
 
                     default:
-                        ProtocolLogger.Warn($"[Elevator] 알 수 없는 ElevatorStatus.mode 값: {status.mode}. 모드 전환 명령 생략.");
+                        ProtocolLogger.Warn($"[Elevator] 알 수 없는 ElevatorStatus.mode 값: {elevator.mode}. 모드 전환 명령 생략.");
                         break;
+                }
+            }
+            else
+            {
+
+                // ------------------------------------------------------------
+                // [1] 1순위: Commands 에 PENDING 또는 REQUEST 상태의 명령이 있는 경우
+                // ------------------------------------------------------------
+                var command = _repository.Commands.GetAll().FirstOrDefault(c => c.state == nameof(CommandState.PENDING) || c.state == nameof(CommandState.REQUEST));
+
+                if (command != null)
+                {
+                    EventLogger.Info($"[Elevator][Sending] Command 감지. Id={command.commnadId}, Action={command.actionName}, State={command.state}");
+
+                    switch (command.actionName)
+                    {
+                        case nameof(CommandAction.DOOROPEN):
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=05&Data=00&Dest=00";
+                            ProtocolLogger.Info("[Elevator][Sending] DOOROPEN Messgae.");
+                            break;
+
+                        case nameof(CommandAction.DOORCLOSE):
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=06&Data=00&Dest=00";
+                            ProtocolLogger.Info("[Elevator][Sending] DOORCLOSE Messgae.");
+                            break;
+
+                        case nameof(CommandAction.CALL_B1F):
+                        case nameof(CommandAction.GOTO_B1F):
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=01&Dest=01";
+                            ProtocolLogger.Info("[Elevator][Sending] B1F Call/Goto Messgae.");
+                            break;
+
+                        case nameof(CommandAction.CALL_1F):
+                        case nameof(CommandAction.GOTO_1F):
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=02&Dest=02";
+                            ProtocolLogger.Info("[Elevator][Sending] 1F Call/Goto Messgae.");
+                            break;
+
+                        case nameof(CommandAction.CALL_2F):
+                        case nameof(CommandAction.GOTO_2F):
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=03&Dest=03";
+                            ProtocolLogger.Info("[Elevator][Sending] 2F Call/Goto Messgae.");
+                            break;
+
+                        case nameof(CommandAction.CALL_3F):
+                        case nameof(CommandAction.GOTO_3F):
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=04&Dest=04";
+                            ProtocolLogger.Info("[Elevator][Sending] 3F Call/Goto Messgae.");
+                            break;
+
+                        case nameof(CommandAction.CALL_4F):
+                        case nameof(CommandAction.GOTO_4F):
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=05&Dest=05";
+                            ProtocolLogger.Info("[Elevator][Sending] 4F Call/Goto Messgae.");
+                            break;
+
+                        case nameof(CommandAction.CALL_5F):
+                        case nameof(CommandAction.GOTO_5F):
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=06&Dest=06";
+                            ProtocolLogger.Info("[Elevator][Sending] 5F Call/Goto Messgae.");
+                            break;
+
+                        case nameof(CommandAction.CALL_6F):
+                        case nameof(CommandAction.GOTO_6F):
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=03&Data=07&Dest=07";
+                            ProtocolLogger.Info("[Elevator][Sending] 6F Call/Goto Messgae.");
+                            break;
+
+                        case nameof(CommandAction.AGVMODE):
+                            // Param = 09 AGV운전 명령 , Data = 1이면 제어 , Dest = 00으로 고정
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=01&Dest=00";
+                            ProtocolLogger.Info("[Elevator][Sending] AGV Mode Change Messgae (Data=01).");
+                            break;
+
+                        case nameof(CommandAction.NOTAGVMODE):
+                            // Param = 09 AGV운전 명령 , Data = 0이면 비제어 , Dest = 00으로 고정
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=00&Dest=00";
+                            ProtocolLogger.Info("[Elevator][Sending] NOT AGV Mode Change Messgae (Data=00).");
+                            break;
+
+                        default:
+                            // 정의되지 않은 Action 이 들어온 경우
+                            ProtocolLogger.Warn($"[Elevator][Sending] 정의되지 않은 CommandAction: {command.actionName}. 송신 명령 없음.");
+                            break;
+                    }
+
+                    return sendMsg;
+                }
+
+                // ------------------------------------------------------------
+                // [2] 2순위: Command 가 없을 때는 상태/모드 기반 처리
+                //      - ModeCheck == false : 아직 모드 조회 안 함 → 상태 조회(Cmd=10) 요청
+                //      - ModeCheck == true  : 이전에 상태 요청을 보냈고, 이번엔 DB 상태값 보고 모드 변경
+                // ------------------------------------------------------------
+                if (!ModeCheck)
+                {
+                    // 아직 모드 확인을 안한 상태 → 모드 조회 명령 전송
+                    sendMsg = "Cmd=10&AId=1&DId=1";
+                    ModeCheck = true;
+
+                    ProtocolLogger.Info("[Elevator][Sending] default Status Messgae.");
+                }
+                else
+                {
+                    // ModeCheck == true 인 상태 → ElevatorStatus 테이블 기준으로 모드 전환
+
+                    //ProtocolLogger.Info($"[Elevator] ElevatorStatus 확인. mode={status.mode}");
+
+                    switch (elevator.mode)
+                    {
+                        case nameof(Mode.AGVMODE):
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=01&Dest=00";
+                            ModeCheck = false;
+                            ProtocolLogger.Info("[Elevator][Sending] AGV Mode Change Messgae (Param=09, Data=01).");
+                            break;
+
+                        case nameof(Mode.NOTAGVMODE):
+                            sendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=00&Dest=00";
+                            ModeCheck = false;
+                            ProtocolLogger.Info("[Elevator][Sending] NOT AGV Mode Change Messgae (Param=09, Data=00).");
+                            break;
+
+                        default:
+                            ProtocolLogger.Warn($"[Elevator] 알 수 없는 ElevatorStatus.mode 값: {elevator.mode}. 모드 전환 명령 생략.");
+                            break;
+                    }
                 }
             }
 

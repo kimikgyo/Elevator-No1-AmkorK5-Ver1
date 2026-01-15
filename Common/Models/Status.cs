@@ -14,6 +14,8 @@ namespace Common.Models
         DISCONNECT,
         CONNECT,
         PROTOCOLERROR,
+        PAUSE,
+        RESUME,
         DOOROPEN_B1F,
         DOOROPEN_1F,
         DOOROPEN_2F,

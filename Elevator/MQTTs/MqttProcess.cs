@@ -50,6 +50,21 @@ namespace Elevator_NO1.MQTTs
             }
         }
 
+        public void elevatorStateUpdate(string state)
+        {
+
+            var elevator = _repository.ElevatorStatus.GetAll().FirstOrDefault();
+            if (elevator != null && elevator.state != state)
+            {
+                if (elevator.state != nameof(State.DISCONNECT) && state == nameof(State.CONNECT)) return;
+                if (elevator.state != nameof(State.CONNECT) && state == nameof(State.DISCONNECT)) return;
+                if (elevator.state == nameof(State.PAUSE)&& state != nameof(State.RESUME)) return;
+                elevator.state = state;
+                elevator.updateAt = DateTime.Now;
+                _repository.ElevatorStatus.Update(elevator);
+                _mqttQueue.MqttPublishMessage(TopicType.NO1, TopicSubType.status, _mapping.StatusMappings.Publish_Status(elevator));
+            }
+        }
         public void LogExceptionMessage(Exception ex)
         {
             //string message = ex.InnerException?.Message ?? ex.Message;

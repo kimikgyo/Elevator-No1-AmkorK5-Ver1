@@ -67,7 +67,10 @@ namespace Data.Repositorys
         }
         public List<Status> GetAll()
         {
-            return _statuses.ToList();
+            lock (_lock)
+            {
+                return _statuses.ToList();
+            }
         }
     }
 }

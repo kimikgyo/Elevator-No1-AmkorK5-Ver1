@@ -126,7 +126,7 @@ namespace Elevator_NO1.Services
             {
                 if (elevator.state != nameof(State.DISCONNECT) && state == nameof(State.CONNECT)) return;
                 if (elevator.state != nameof(State.CONNECT) && state == nameof(State.DISCONNECT)) return;
-
+                if (elevator.state == nameof(State.PAUSE)&& state != nameof(State.RESUME)) return;
                 elevator.state = state;
                 elevator.updateAt = DateTime.Now;
                 _repository.ElevatorStatus.Update(elevator);

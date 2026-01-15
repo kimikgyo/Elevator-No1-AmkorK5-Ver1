@@ -3,10 +3,12 @@
     public enum TopicType
     {
         NO1,
+        elevator,
     }
 
     public enum TopicSubType
     {
+        camera,
         status,
         command
     }

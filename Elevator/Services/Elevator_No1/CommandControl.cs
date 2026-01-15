@@ -23,6 +23,7 @@ namespace Elevator_NO1.Services
                 WorkerId = "",
                 actionName = parameterValue.ToString(),
                 parameterJson = JsonSerializer.Serialize(param),
+                createdAt = DateTime.Now
             };
             _repository.Commands.Add(command);
         }
