@@ -96,6 +96,7 @@ namespace Elevator_NO1.Services
             else
             {
                 elevatorState(protocolDto);
+                EnsureDoorCloseOnOpenTimeoutByState();
                 commandExcuting(protocolDto);
                 commmandCompleted(protocolDto);
             }

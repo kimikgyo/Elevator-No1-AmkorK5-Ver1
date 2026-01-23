@@ -6,7 +6,8 @@ namespace Data.Interfaces
 {
     public class ConnectionStrings
     {
-        public static readonly string DB1 = @"Data SOURCE=.\SQLEXPRESS;Initial Catalog=AmkorK5_Elevator_NO1; User ID = sa;TrustServerCertificate=true; Password=acsserver;Connect Timeout=30;";
+        public static readonly string DB1 = @"Data SOURCE= 10.141.26.103,1500;Initial Catalog=AmkorK5_ACS; User ID = sa;TrustServerCertificate=true; Password=acsserver;Connect Timeout=30;"; //AmkorK5
+        //public static readonly string DB1 = @"Data SOURCE=.\SQLEXPRESS;Initial Catalog=AmkorK5_ACS; User ID = sa;TrustServerCertificate=true; Password=acsserver;Connect Timeout=30;";
         //public static readonly string DB1 = @"Data Source=192.168.8.215,1433; Initial Catalog=JobScheduler; User ID = sa; Password=acsserver; Connect Timeout=30; TrustServerCertificate=true"; // STI
     }
 

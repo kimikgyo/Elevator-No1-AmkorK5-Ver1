@@ -27,9 +27,9 @@ namespace Data.Repositorys
             //VARCHAR 대신 NVARCHAR로 저장해야함 VARCHAR은 영문만 가능함
             // 테이블 존재 여부 확인 쿼리
             string checkTableQuery = @"
-                                    IF OBJECT_id('dbo.[Command]', 'U') IS NULL
+                                    IF OBJECT_id('dbo.[Elevator_NO1_Command]', 'U') IS NULL
                                      BEGIN
-                                         CREATE TABLE dbo.[Command]
+                                         CREATE TABLE dbo.[Elevator_NO1_Command]
                                          (
                                              [commnadId]            NVARCHAR(64)    NULL
                                             ,[name]                 NVARCHAR(64)    NULL
@@ -60,7 +60,7 @@ namespace Data.Repositorys
             _commands.Clear();
             using (var con = new SqlConnection(connectionString))
             {
-                foreach (var data in con.Query<Command>("SELECT * FROM [Command]"))
+                foreach (var data in con.Query<Command>("SELECT * FROM [Elevator_NO1_Command]"))
                 {
                     _commands.Add(data);
 
@@ -76,7 +76,7 @@ namespace Data.Repositorys
                 using (var con = new SqlConnection(connectionString))
                 {
                     const string INSERT_SQL = @"
-                    INSERT INTO [Command]
+                    INSERT INTO [Elevator_NO1_Command]
                          (
                              [commnadId]
                             ,[name]
@@ -121,7 +121,7 @@ namespace Data.Repositorys
                 using (var con = new SqlConnection(connectionString))
                 {
                     const string UPDATE_SQL = @"
-                    UPDATE [Command]
+                    UPDATE [Elevator_NO1_Command]
                     SET
                          [name]             = @name
                         ,[type]             = @type
@@ -151,7 +151,7 @@ namespace Data.Repositorys
 
                 using (var con = new SqlConnection(connectionString))
                 {
-                    con.Execute("DELETE FROM [Command]");
+                    con.Execute("DELETE FROM [Elevator_NO1_Command]");
                     _commands.Clear();
                     logger.Info($"Delete");
                 }
@@ -166,7 +166,7 @@ namespace Data.Repositorys
 
                 using (var con = new SqlConnection(connectionString))
                 {
-                    con.Execute("DELETE FROM [Command] WHERE commnadId = @commnadId", param: new { commnadId = remove.commnadId });
+                    con.Execute("DELETE FROM [Elevator_NO1_Command] WHERE commnadId = @commnadId", param: new { commnadId = remove.commnadId });
                     _commands.Remove(remove);
                     logger.Info($"Remove: {remove}");
                 }

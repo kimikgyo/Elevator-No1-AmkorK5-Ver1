@@ -8,13 +8,15 @@ namespace Data
         public static List<MqttTopicSubscribe> SubscribeTopics { get; set; }
         public static List<MqttTopicPublish> PublishTopics { get; set; }
         public static MQTTSetting MQTTSetting { get; set; }
-
+        public static ElevatorPolicy ElevatorPolicy { get; set; }
         public static void Load(IConfiguration configuration)
         {
             ConfigData.ServiceApis = configuration.GetSection("ServiceApiInfo").Get<List<ServiceApi>>();
             ConfigData.MQTTSetting = configuration.GetSection("MQTTSetting").Get<MQTTSetting>();
             ConfigData.SubscribeTopics = configuration.GetSection("MqttTopicSubscribe").Get<List<MqttTopicSubscribe>>();
             ConfigData.PublishTopics = configuration.GetSection("MqttTopicPublish").Get<List<MqttTopicPublish>>();
+            ConfigData.ElevatorPolicy = configuration.GetSection("ElevatorPolicy").Get<ElevatorPolicy>();
+            
         }
     }
 

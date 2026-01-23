@@ -20,10 +20,13 @@ namespace Common.Models
     public enum CommandAction
     {
         None = 0,
+        State,
         AGVMODE,
         NOTAGVMODE,
         DOOROPEN,
         DOORCLOSE,
+        OPEN_HOLD_SOURCE,
+        OPEN_HOLD_DEST,
         CALL_B1F,
         CALL_1F,
         CALL_2F,
