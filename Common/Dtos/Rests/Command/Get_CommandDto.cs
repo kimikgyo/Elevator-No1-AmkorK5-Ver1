@@ -10,9 +10,11 @@ namespace Common.Dtos.Rests.Command
         [JsonPropertyOrder(3)] public string type { get; set; }
         [JsonPropertyOrder(4)] public string subType { get; set; }
         [JsonPropertyOrder(5)] public string state { get; set; }
-        [JsonPropertyOrder(6)] public string WorkerId { get; set; }
-        [JsonPropertyOrder(7)] public string actionName { get; set; }
-        [JsonPropertyOrder(8)] public List<Parameter> parameters { get; set; }
+        [JsonPropertyOrder(6)] public int sequence { get; set; }
+
+        [JsonPropertyOrder(7)] public string WorkerId { get; set; }
+        [JsonPropertyOrder(8)] public string actionName { get; set; }
+        [JsonPropertyOrder(9)] public List<Parameter> parameters { get; set; }
 
         public override string ToString()
         {
@@ -40,6 +42,7 @@ namespace Common.Dtos.Rests.Command
                $",type = {type,-5}" +
                $",subType = {subType,-5}" +
                $",state = {state,-5}" +
+               $",sequence = {sequence,-5}" +
                $",WorkerId = {WorkerId,-5}" +
                $",actionName = {actionName,-5}" +
                $",parameters = {parameters,-5}";

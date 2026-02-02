@@ -80,7 +80,7 @@ namespace Elevator_NO1.Services
             // ------------------------------------------------------------
             if (elevator.state == nameof(State.PAUSE))
             {
-                sendMsg = BuildSendMsgByActionName(nameof(CommandAction.DOOROPEN));
+                sendMsg = BuildSendMsgByActionName(nameof(CommandAction.PAUSEDOOROPEN));
 
                 if (string.IsNullOrWhiteSpace(sendMsg))
                     EventLogger.Warn("[Sending][PAUSE] DOOROPEN msg empty (mapping fail)");
@@ -91,9 +91,9 @@ namespace Elevator_NO1.Services
             // ------------------------------------------------------------
             // 2) 후보 Command 조회 (PENDING/REQUEST)
             // ------------------------------------------------------------
-            var all = _repository.Commands.GetAll();
+            var all = _repository.Commands.GetAll().OrderBy(c => c.createdAt).ThenBy(t => t.sequence).ToList();
             var runCommand = all.FirstOrDefault(r => r.state == nameof(CommandState.EXECUTING));
-            var candidates = all.Where(c => c != null && (c.state == nameof(CommandState.PENDING) || c.state == nameof(CommandState.REQUEST))).OrderBy(c => c.createdAt).ToList();
+            var candidates = all.Where(c => c != null && (c.state == nameof(CommandState.PENDING) || c.state == nameof(CommandState.REQUEST))).OrderBy(c => c.createdAt).ThenBy(t => t.sequence).ToList();
 
             if (all != null && runCommand == null && candidates != null && candidates.Count > 0)
             {
@@ -232,6 +232,7 @@ namespace Elevator_NO1.Services
                 // ------------------------------------------------------------
                 // 2-2) HOLD 유지 (OPEN_HOLD_*)
                 // ------------------------------------------------------------
+
                 var holdCandidate = all.FirstOrDefault(c => c.state == nameof(CommandState.EXECUTING)
                 && (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) || c.actionName == nameof(CommandAction.OPEN_HOLD_DEST)));
 
@@ -311,6 +312,11 @@ namespace Elevator_NO1.Services
                 case nameof(CommandAction.DOOROPEN):
                     sendMsg = "Cmd=20&AId=1&DId=1&Param=05&Data=00&Dest=00";
                     ProtocolLogger.Info("[BuildSendMsg] DOOROPEN.");
+                    break;
+
+                case nameof(CommandAction.PAUSEDOOROPEN):
+                    sendMsg = "Cmd=20&AId=1&DId=1&Param=05&Data=00&Dest=00";
+                    ProtocolLogger.Info("[BuildSendMsg][Pause] DOOROPEN.");
                     break;
 
                 case nameof(CommandAction.OPEN_HOLD_SOURCE):

@@ -23,6 +23,7 @@ namespace Common.Models
         State,
         AGVMODE,
         NOTAGVMODE,
+        PAUSEDOOROPEN,
         DOOROPEN,
         DOORCLOSE,
         OPEN_HOLD_SOURCE,
@@ -61,15 +62,16 @@ namespace Common.Models
         [JsonPropertyOrder(3)] public string type { get; set; }
         [JsonPropertyOrder(4)] public string subType { get; set; }
         [JsonPropertyOrder(5)] public string state { get; set; }
-        [JsonPropertyOrder(6)] public string WorkerId { get; set; }
-        [JsonPropertyOrder(7)] public string actionName { get; set; }
-        [JsonPropertyOrder(8)] public string parameterJson { get; set; }
+        [JsonPropertyOrder(6)] public int sequence { get; set; }
+        [JsonPropertyOrder(7)] public string WorkerId { get; set; }
+        [JsonPropertyOrder(8)] public string actionName { get; set; }
+        [JsonPropertyOrder(9)] public string parameterJson { get; set; }
 
         //[JsonPropertyOrder(9)] public string preReportsjson { get; set; }
         //[JsonPropertyOrder(10)] public string postReportsjson { get; set; }
-        [JsonPropertyOrder(11)] public DateTime  createdAt { get; set; }
-        [JsonPropertyOrder(12)] public DateTime? updatedAt { get; set; }
-        [JsonPropertyOrder(13)] public DateTime? finishedAt { get; set; }
+        [JsonPropertyOrder(10)] public DateTime  createdAt { get; set; }
+        [JsonPropertyOrder(11)] public DateTime? updatedAt { get; set; }
+        [JsonPropertyOrder(12)] public DateTime? finishedAt { get; set; }
 
         public override string ToString()
         {
@@ -79,6 +81,7 @@ namespace Common.Models
                $",type = {type,-5}" +
                $",subType = {subType,-5}" +
                $",state = {state,-5}" +
+               $",sequence = {sequence,-5}" +
                $",WorkerId = {WorkerId,-5}" +
                $",actionName = {actionName,-5}" +
                $",parameterJson = {parameterJson,-5}" +
