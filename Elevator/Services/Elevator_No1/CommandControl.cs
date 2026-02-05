@@ -123,7 +123,9 @@ namespace Elevator_NO1.Services
                         break;
 
                     case nameof(CommandAction.AGVMODE):
+                    case nameof(CommandAction.AGVMODE_CHANGING_NOTAGVMODE):
                     case nameof(CommandAction.NOTAGVMODE):
+                    case nameof(CommandAction.NOTAGVMODE_CHANGING_AGVMODE):
                         changeState = basicCondition && protocolDto.Param == 9 && protocolDto.Dest == 0;
                         break;
                 }
@@ -143,14 +145,29 @@ namespace Elevator_NO1.Services
                 // ------------------------------------------------------------
                 // MODECHANGE 계열은 즉시 완료 처리(너 정책 유지)
                 // ------------------------------------------------------------
-                if (command.actionName == nameof(CommandAction.AGVMODE))
+                string mode = null;
+                switch (command.actionName)
                 {
-                    elevatorModeUpdate(nameof(Mode.AGVMODE));
-                    CommandStateUpdate(command.commnadId, nameof(CommandState.COMPLETED));
+                    case nameof(CommandAction.AGVMODE):
+                        mode = nameof(Mode.AGVMODE);
+                        break;
+
+                    case nameof(CommandAction.NOTAGVMODE):
+                        mode = nameof(Mode.NOTAGVMODE);
+                        break;
+
+                    case nameof(CommandAction.AGVMODE_CHANGING_NOTAGVMODE):
+                        mode = nameof(Mode.AGVMODE_CHANGING_NOTAGVMODE);
+                        break;
+
+                    case nameof(CommandAction.NOTAGVMODE_CHANGING_AGVMODE):
+                        mode = nameof(Mode.NOTAGVMODE_CHANGING_AGVMODE);
+                        break;
                 }
-                else if (command.actionName == nameof(CommandAction.NOTAGVMODE))
+
+                if (mode != null)
                 {
-                    elevatorModeUpdate(nameof(Mode.NOTAGVMODE));
+                    elevatorModeUpdate(mode);
                     CommandStateUpdate(command.commnadId, nameof(CommandState.COMPLETED));
                 }
             }
@@ -179,7 +196,7 @@ namespace Elevator_NO1.Services
             if (commands == null || commands.Count == 0) return;
 
             // 기존 로직 유지(doorOpen 자동 생성용)
-            var doorOpenCommand = all.FirstOrDefault(c => c != null 
+            var doorOpenCommand = all.FirstOrDefault(c => c != null
                                                  && (c.actionName == nameof(CommandAction.DOOROPEN) || c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) || c.actionName == nameof(CommandAction.OPEN_HOLD_DEST)));
 
             foreach (var command in commands)
@@ -311,7 +328,6 @@ namespace Elevator_NO1.Services
                     // ------------------------------------------------------------
                     if (command.actionName == nameof(CommandAction.DOORCLOSE))
                     {
-                       
                     }
                 }
             }

@@ -6,7 +6,9 @@ namespace Common.Models
     public enum Mode
     {
         AGVMODE,
-        NOTAGVMODE
+        AGVMODE_CHANGING_NOTAGVMODE,
+        NOTAGVMODE,
+        NOTAGVMODE_CHANGING_AGVMODE
     }
 
     public enum State

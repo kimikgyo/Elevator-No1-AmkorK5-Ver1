@@ -147,23 +147,25 @@ namespace Elevator_NO1.Services
                 // ------------------------------------------------------------
                 // 2-3) MODECHANGE 우선
                 // ------------------------------------------------------------
-                var mode = candidates.FirstOrDefault(c =>
+                var modechange = candidates.FirstOrDefault(c =>
                     c.actionName == nameof(CommandAction.AGVMODE) ||
-                    c.actionName == nameof(CommandAction.NOTAGVMODE));
+                    c.actionName == nameof(CommandAction.AGVMODE_CHANGING_NOTAGVMODE) ||
+                    c.actionName == nameof(CommandAction.NOTAGVMODE) ||
+                    c.actionName == nameof(CommandAction.NOTAGVMODE_CHANGING_AGVMODE));
 
-                if (mode != null)
+                if (modechange != null)
                 {
-                    sendMsg = BuildSendMsgByActionName(mode.actionName);
+                    sendMsg = BuildSendMsgByActionName(modechange.actionName);
 
                     if (string.IsNullOrWhiteSpace(sendMsg))
                     {
                         EventLogger.Warn(
-                            $"[Sending][MODE][SKIP] sendMsg empty. cmdId={mode.commnadId}, action={mode.actionName}"
+                            $"[Sending][MODE][SKIP] sendMsg empty. cmdId={modechange.commnadId}, action={modechange.actionName}"
                         );
                         return string.Empty;
                     }
 
-                    EventLogger.Info($"[Sending][MODE][OK] cmdId={mode.commnadId}, action={mode.actionName}");
+                    EventLogger.Info($"[Sending][MODE][OK] cmdId={modechange.commnadId}, action={modechange.actionName}");
                     return sendMsg;
                 }
 
@@ -262,16 +264,29 @@ namespace Elevator_NO1.Services
                 return sendMsg;
             }
 
-            if (elevator.mode == nameof(Mode.AGVMODE))
+            string mode = null;
+            switch (elevator.mode)
             {
-                sendMsg = BuildSendMsgByActionName(nameof(CommandAction.AGVMODE));
-                ModeCheck = false;
-                return sendMsg;
+                case nameof(Mode.AGVMODE):
+                    mode = nameof(Mode.AGVMODE);
+                    break;
+
+                case nameof(Mode.NOTAGVMODE):
+                    mode = nameof(Mode.NOTAGVMODE);
+                    break;
+
+                case nameof(Mode.AGVMODE_CHANGING_NOTAGVMODE):
+                    mode = nameof(Mode.AGVMODE_CHANGING_NOTAGVMODE);
+                    break;
+
+                case nameof(Mode.NOTAGVMODE_CHANGING_AGVMODE):
+                    mode = nameof(Mode.NOTAGVMODE_CHANGING_AGVMODE);
+                    break;
             }
 
-            if (elevator.mode == nameof(Mode.NOTAGVMODE))
+            if (mode != null)
             {
-                sendMsg = BuildSendMsgByActionName(nameof(CommandAction.NOTAGVMODE));
+                sendMsg = BuildSendMsgByActionName(mode);
                 ModeCheck = false;
                 return sendMsg;
             }
@@ -382,9 +397,19 @@ namespace Elevator_NO1.Services
                     ProtocolLogger.Info("[BuildSendMsg] AGVMODE (Data=01).");
                     break;
 
+                case nameof(CommandAction.AGVMODE_CHANGING_NOTAGVMODE):
+                    sendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=01&Dest=00";
+                    ProtocolLogger.Info("[BuildSendMsg] AGVMODE_CHANGING_NOTAGVMODE (Data=01).");
+                    break;
+
                 case nameof(CommandAction.NOTAGVMODE):
                     sendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=00&Dest=00";
                     ProtocolLogger.Info("[BuildSendMsg] NOTAGVMODE (Data=00).");
+                    break;
+
+                case nameof(CommandAction.NOTAGVMODE_CHANGING_AGVMODE):
+                    sendMsg = "Cmd=20&AId=1&DId=1&Param=09&Data=00&Dest=00";
+                    ProtocolLogger.Info("[BuildSendMsg] NOTAGVMODE_CHANGING_AGVMODE (Data=00).");
                     break;
 
                 default:

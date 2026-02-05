@@ -9,18 +9,28 @@ namespace Common.Models
 
     public enum SubType
     {
-        MODECHANGE,
+        MODECHANGEREQUEST,
+        MODECHANGEAPPLY,
+        MODECHANGECANCEL,
+        ELEVATORENTER,
+        ELEVATOREXIT,
         SOURCEFLOOR,
         DOOROPEN,
         DOORCLOSE,
+        DOOROPENHOLD_SOURCE,
+        DOOROPENHOLD_DEST,
         DESTINATIONFLOOR,
-        ELEVATORMODE
+        DESTINATIONCHANGE,
+        PAUSE,
+        RESUME
     }
 
     public enum CommandAction
     {
         None = 0,
         State,
+        NOTAGVMODE_CHANGING_AGVMODE,
+        AGVMODE_CHANGING_NOTAGVMODE,
         AGVMODE,
         NOTAGVMODE,
         PAUSEDOOROPEN,
