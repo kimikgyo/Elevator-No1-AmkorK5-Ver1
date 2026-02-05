@@ -222,7 +222,10 @@ namespace Elevator_NO1.Services
                         break;
 
                     case nameof(CommandAction.DOORCLOSE):
-                        changeState = doorClose;
+                        // 다른 로봇과 겹쳤을시에 문이닫혀서 문제가 생김! 
+                        //changeState = doorClose;
+                        
+                        //수정
                         // EXECUTING 중인 HOLD를 찾아 종료
                         var hold = all.FirstOrDefault(c => c != null && c.state == nameof(CommandState.EXECUTING) &&
                                                      (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) || c.actionName == nameof(CommandAction.OPEN_HOLD_DEST)));
@@ -231,10 +234,12 @@ namespace Elevator_NO1.Services
                         {
                             EventLogger.Info($"[Completed][CLOSE] complete HOLD by doorClose done. holdId={hold.commnadId}, holdAction={hold.actionName}");
                             CommandStateUpdate(hold.commnadId, nameof(CommandState.COMPLETED));
+                            changeState = true;
                         }
                         else
                         {
                             // 디버깅: CLOSE 완료인데 HOLD가 없으면 정상(이미 끝났거나 애초에 없거나)
+                            changeState = true;
                             EventLogger.Info("[Completed][CLOSE] no EXECUTING HOLD found (ok).");
                         }
                         break;
@@ -243,8 +248,9 @@ namespace Elevator_NO1.Services
                     case nameof(CommandAction.GOTO_B1F):
                         if (protocolDto.Floor == 1)
                         {
-                            createDoorOpen = doorClose && doorOpenCommand == null;
-                            if (doorOpen) changeState = true;
+                            if(doorOpen || doorClose) changeState = true;
+                            //if(doorOpen) changeState = true;
+                            //changeState = true;
                         }
                         break;
 
@@ -252,8 +258,9 @@ namespace Elevator_NO1.Services
                     case nameof(CommandAction.GOTO_1F):
                         if (protocolDto.Floor == 2)
                         {
-                            createDoorOpen = doorClose && doorOpenCommand == null;
-                            if (doorOpen) changeState = true;
+                            if (doorOpen || doorClose) changeState = true;
+                            //if(doorOpen) changeState = true;
+                            //changeState = true;
                         }
                         break;
 
@@ -261,8 +268,9 @@ namespace Elevator_NO1.Services
                     case nameof(CommandAction.GOTO_2F):
                         if (protocolDto.Floor == 3)
                         {
-                            createDoorOpen = doorClose && doorOpenCommand == null;
-                            if (doorOpen) changeState = true;
+                            if (doorOpen || doorClose) changeState = true;
+                            //if(doorOpen) changeState = true;
+                            //changeState = true;
                         }
                         break;
 
@@ -270,8 +278,9 @@ namespace Elevator_NO1.Services
                     case nameof(CommandAction.GOTO_3F):
                         if (protocolDto.Floor == 4)
                         {
-                            createDoorOpen = doorClose && doorOpenCommand == null;
-                            if (doorOpen) changeState = true;
+                            if (doorOpen || doorClose) changeState = true;
+                            //if(doorOpen) changeState = true;
+                            //changeState = true;
                         }
                         break;
 
@@ -279,8 +288,9 @@ namespace Elevator_NO1.Services
                     case nameof(CommandAction.GOTO_4F):
                         if (protocolDto.Floor == 5)
                         {
-                            createDoorOpen = doorClose && doorOpenCommand == null;
-                            if (doorOpen) changeState = true;
+                            if (doorOpen || doorClose) changeState = true;
+                            //if(doorOpen) changeState = true;
+                            //changeState = true;
                         }
                         break;
 
@@ -288,8 +298,9 @@ namespace Elevator_NO1.Services
                     case nameof(CommandAction.GOTO_5F):
                         if (protocolDto.Floor == 6)
                         {
-                            createDoorOpen = doorClose && doorOpenCommand == null;
-                            if (doorOpen) changeState = true;
+                            if (doorOpen || doorClose) changeState = true;
+                            //if (doorOpen) changeState = true;
+                            //changeState = true;
                         }
                         break;
 
@@ -297,8 +308,9 @@ namespace Elevator_NO1.Services
                     case nameof(CommandAction.GOTO_6F):
                         if (protocolDto.Floor == 7)
                         {
-                            createDoorOpen = doorClose && doorOpenCommand == null;
-                            if (doorOpen) changeState = true;
+                            if (doorOpen || doorClose) changeState = true;
+                            //if (doorOpen) changeState = true;
+                            //changeState = true;
                         }
                         break;
                     // HOLD는 완료 이벤트가 없다고 했으니
@@ -309,11 +321,6 @@ namespace Elevator_NO1.Services
                         // do nothing
                         break;
                 }
-
-                //if (createDoorOpen)
-                //{
-                //    CreateCommand(nameof(SubType.DOOROPEN), nameof(CommandAction.DOOROPEN), nameof(CommandState.PENDING));
-                //}
                 if (changeState)
                 {
                     // ------------------------------------------------------------
