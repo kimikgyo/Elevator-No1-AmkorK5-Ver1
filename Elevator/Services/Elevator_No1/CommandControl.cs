@@ -77,9 +77,9 @@ namespace Elevator_NO1.Services
                 // ------------------------------------------------------------
                 switch (command.actionName)
                 {
-                    case nameof(CommandAction.DOOROPEN):
                     case nameof(CommandAction.OPEN_HOLD_SOURCE):
                     case nameof(CommandAction.OPEN_HOLD_DEST):
+                    case nameof(CommandAction.DOOROPEN):
                         changeState = basicCondition && protocolDto.Param == 5 && protocolDto.Dest == 0;
                         break;
 
@@ -227,7 +227,7 @@ namespace Elevator_NO1.Services
                         
                         //수정
                         // EXECUTING 중인 HOLD를 찾아 종료
-                        var hold = all.FirstOrDefault(c => c != null && c.state == nameof(CommandState.EXECUTING) &&
+                        var hold = all.FirstOrDefault(c => c != null && c.state == nameof(CommandState.EXECUTING) && c.WorkerId == command.WorkerId &&
                                                      (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) || c.actionName == nameof(CommandAction.OPEN_HOLD_DEST)));
 
                         if (hold != null)

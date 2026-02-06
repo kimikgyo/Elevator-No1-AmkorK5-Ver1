@@ -39,6 +39,7 @@ namespace Elevator_NO1.Services
         }
 
         private bool ModeCheck = false;
+        private bool _holdToggleSendStateFirst = true;
 
         private string SendingElevator_Control()
         {
@@ -130,6 +131,22 @@ namespace Elevator_NO1.Services
 
                 if (holdCandidate_1 != null)
                 {
+                    if (_holdToggleSendStateFirst)
+                    {
+                        _holdToggleSendStateFirst = false;
+
+                        sendMsg = BuildSendMsgByActionName(nameof(CommandAction.State));
+                        if (string.IsNullOrWhiteSpace(sendMsg))
+                        {
+                            EventLogger.Warn("[Sending][STATE][SKIP] sendMsg empty (toggle)");
+                            return string.Empty;
+                        }
+
+                        EventLogger.Info($"[Sending][STATE][OK] (toggle before hold) holdId={holdCandidate_1.commnadId}");
+                        return sendMsg;
+                    }
+
+                    _holdToggleSendStateFirst = true;
                     sendMsg = BuildSendMsgByActionName(holdCandidate_1.actionName);
 
                     if (string.IsNullOrWhiteSpace(sendMsg))
@@ -240,6 +257,23 @@ namespace Elevator_NO1.Services
 
                 if (holdCandidate != null)
                 {
+                    if (_holdToggleSendStateFirst)
+                    {
+                        _holdToggleSendStateFirst = false;
+
+                        sendMsg = BuildSendMsgByActionName(nameof(CommandAction.State));
+                        if (string.IsNullOrWhiteSpace(sendMsg))
+                        {
+                            EventLogger.Warn("[Sending][STATE][SKIP] sendMsg empty (toggle)");
+                            return string.Empty;
+                        }
+
+                        EventLogger.Info($"[Sending][STATE][OK] (toggle before hold) holdId={holdCandidate.commnadId}");
+                        return sendMsg;
+                    }
+
+                    _holdToggleSendStateFirst = true;
+
                     sendMsg = BuildSendMsgByActionName(holdCandidate.actionName);
 
                     if (string.IsNullOrWhiteSpace(sendMsg))
