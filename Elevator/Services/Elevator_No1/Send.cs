@@ -149,32 +149,68 @@ namespace Elevator_NO1.Services
                 // - DESTINATIONFLOOR 완료 전 -> OPEN_HOLD_DEST 제외
                 // - 같은 WorkerId 기준으로 완료 여부 판단
                 // --------------------------------------------------------
-                var holdCandidate_1 = candidates.FirstOrDefault(c =>
+                Command holdCandidate_1 = null;
+
+                foreach (var candidate in candidates)
                 {
-                    if (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE))
-                    {
-                        var sourceFloorCompleted = all.FirstOrDefault(x =>
-                            x != null &&
-                            x.WorkerId == c.WorkerId &&
-                            x.subType == nameof(SubType.SOURCEFLOOR) &&
-                            x.state == nameof(CommandState.COMPLETED));
+                    if (candidate == null) continue;
 
-                        return sourceFloorCompleted != null;
+                    // OPEN_HOLD_SOURCE 인 경우
+                    if (candidate.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE))
+                    {
+                        Command sourceFloorAlive = null;
+
+                        foreach (var sourceCommand in all)
+                        {
+                            if (sourceCommand == null) continue;
+                            if (sourceCommand.WorkerId != candidate.WorkerId) continue;
+                            if (sourceCommand.subType != nameof(SubType.SOURCEFLOOR)) continue;
+
+                            if (sourceCommand.state == nameof(CommandState.PENDING) ||
+                                sourceCommand.state == nameof(CommandState.REQUEST) ||
+                                sourceCommand.state == nameof(CommandState.EXECUTING))
+                            {
+                                sourceFloorAlive = sourceCommand;
+                                break;
+                            }
+                        }
+
+                        // SOURCEFLOOR 살아있는 게 없으면 HOLD 가능
+                        if (sourceFloorAlive == null)
+                        {
+                            holdCandidate_1 = candidate;
+                            break;
+                        }
                     }
 
-                    if (c.actionName == nameof(CommandAction.OPEN_HOLD_DEST))
+                    // OPEN_HOLD_DEST 인 경우
+                    if (candidate.actionName == nameof(CommandAction.OPEN_HOLD_DEST))
                     {
-                        var destFloorCompleted = all.FirstOrDefault(x =>
-                            x != null &&
-                            x.WorkerId == c.WorkerId &&
-                            x.subType == nameof(SubType.DESTINATIONFLOOR) &&
-                            x.state == nameof(CommandState.COMPLETED));
+                        Command destFloorAlive = null;
 
-                        return destFloorCompleted != null;
+                        foreach (var destCommand in all)
+                        {
+                            if (destCommand == null) continue;
+                            if (destCommand.WorkerId != candidate.WorkerId) continue;
+                            if (destCommand.subType != nameof(SubType.DESTINATIONFLOOR)) continue;
+
+                            if (destCommand.state == nameof(CommandState.PENDING) ||
+                                destCommand.state == nameof(CommandState.REQUEST) ||
+                                destCommand.state == nameof(CommandState.EXECUTING))
+                            {
+                                destFloorAlive = destCommand;
+                                break;
+                            }
+                        }
+
+                        // DESTINATIONFLOOR 살아있는 게 없으면 HOLD 가능
+                        if (destFloorAlive == null)
+                        {
+                            holdCandidate_1 = candidate;
+                            break;
+                        }
                     }
-
-                    return false;
-                });
+                }
 
                 if (holdCandidate_1 != null)
                 {
@@ -436,9 +472,9 @@ namespace Elevator_NO1.Services
         //    // ------------------------------------------------------------
         //    // 2) 후보 Command 조회 (PENDING/REQUEST)
         //    // ------------------------------------------------------------
-        //    var all = _repository.Commands.GetAll().OrderBy(c => c.createdAt).ThenBy(t => t.sequence).ToList();
+        //    var all = _repository.Commands.GetAll().OrderBy(candidate => candidate.createdAt).ThenBy(t => t.sequence).ToList();
         //    var runCommand = all.FirstOrDefault(r => r.state == nameof(CommandState.EXECUTING));
-        //    var candidates = all.Where(c => c != null && (c.state == nameof(CommandState.PENDING) || c.state == nameof(CommandState.REQUEST))).OrderBy(c => c.createdAt).ThenBy(t => t.sequence).ToList();
+        //    var candidates = all.Where(candidate => candidate != null && (candidate.state == nameof(CommandState.PENDING) || candidate.state == nameof(CommandState.REQUEST))).OrderBy(candidate => candidate.createdAt).ThenBy(t => t.sequence).ToList();
 
         //    if (all != null && runCommand == null && candidates != null && candidates.Count > 0)
         //    {
@@ -446,9 +482,9 @@ namespace Elevator_NO1.Services
         //        // 2-1) 층이동 최우선
         //        // ------------------------------------------------------------
 
-        //        var sourceAndDestMove = candidates.FirstOrDefault(c =>
-        //         c.subType == nameof(SubType.SOURCEFLOOR) ||
-        //         c.subType == nameof(SubType.DESTINATIONFLOOR));
+        //        var sourceAndDestMove = candidates.FirstOrDefault(candidate =>
+        //         candidate.subType == nameof(SubType.SOURCEFLOOR) ||
+        //         candidate.subType == nameof(SubType.DESTINATIONFLOOR));
 
         //        if (sourceAndDestMove != null)
         //        {
@@ -469,9 +505,9 @@ namespace Elevator_NO1.Services
         //        // ------------------------------------------------------------
         //        // 2-2) HOLD 유지 최초 전송 (OPEN_HOLD_*)
         //        // ------------------------------------------------------------
-        //        var holdCandidate_1 = all.FirstOrDefault(c =>
-        //            c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) ||
-        //            c.actionName == nameof(CommandAction.OPEN_HOLD_DEST));
+        //        var holdCandidate_1 = all.FirstOrDefault(candidate =>
+        //            candidate.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) ||
+        //            candidate.actionName == nameof(CommandAction.OPEN_HOLD_DEST));
 
         //        if (holdCandidate_1 != null)
         //        {
@@ -508,11 +544,11 @@ namespace Elevator_NO1.Services
         //        // ------------------------------------------------------------
         //        // 2-3) MODECHANGE 우선
         //        // ------------------------------------------------------------
-        //        var modechange = candidates.FirstOrDefault(c =>
-        //            c.actionName == nameof(CommandAction.AGVMODE) ||
-        //            c.actionName == nameof(CommandAction.AGVMODE_CHANGING_NOTAGVMODE) ||
-        //            c.actionName == nameof(CommandAction.NOTAGVMODE) ||
-        //            c.actionName == nameof(CommandAction.NOTAGVMODE_CHANGING_AGVMODE));
+        //        var modechange = candidates.FirstOrDefault(candidate =>
+        //            candidate.actionName == nameof(CommandAction.AGVMODE) ||
+        //            candidate.actionName == nameof(CommandAction.AGVMODE_CHANGING_NOTAGVMODE) ||
+        //            candidate.actionName == nameof(CommandAction.NOTAGVMODE) ||
+        //            candidate.actionName == nameof(CommandAction.NOTAGVMODE_CHANGING_AGVMODE));
 
         //        if (modechange != null)
         //        {
@@ -553,7 +589,7 @@ namespace Elevator_NO1.Services
         //    // ------------------------------------------------------------
         //    // 2-1) CLOSE 최우선
         //    // ------------------------------------------------------------
-        //    var close = candidates.FirstOrDefault(c => c.actionName == nameof(CommandAction.DOORCLOSE));
+        //    var close = candidates.FirstOrDefault(candidate => candidate.actionName == nameof(CommandAction.DOORCLOSE));
         //    if (close != null)
         //    {
         //        // ------------------------------------------------------------
@@ -561,13 +597,13 @@ namespace Elevator_NO1.Services
         //        // - HOLD 종료는 commmandCompleted()에서 doorClose 완료 이벤트 기준으로 처리한다.
         //        // - 여기서는 HOLD가 살아있는지 "조회/로그"만 남긴다.
         //        // ------------------------------------------------------------
-        //        var holdAlive = all.FirstOrDefault(c =>
-        //            c != null
-        //            && (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE)
-        //             || c.actionName == nameof(CommandAction.OPEN_HOLD_DEST))
-        //            && (c.state == nameof(CommandState.PENDING)
-        //             || c.state == nameof(CommandState.REQUEST)
-        //             || c.state == nameof(CommandState.EXECUTING))
+        //        var holdAlive = all.FirstOrDefault(candidate =>
+        //            candidate != null
+        //            && (candidate.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE)
+        //             || candidate.actionName == nameof(CommandAction.OPEN_HOLD_DEST))
+        //            && (candidate.state == nameof(CommandState.PENDING)
+        //             || candidate.state == nameof(CommandState.REQUEST)
+        //             || candidate.state == nameof(CommandState.EXECUTING))
         //        );
 
         //        if (holdAlive != null)
@@ -596,8 +632,8 @@ namespace Elevator_NO1.Services
         //        // 2-2) HOLD 유지 (OPEN_HOLD_*)
         //        // ------------------------------------------------------------
 
-        //        var holdCandidate = all.FirstOrDefault(c => c.state == nameof(CommandState.EXECUTING)
-        //        && (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) || c.actionName == nameof(CommandAction.OPEN_HOLD_DEST)));
+        //        var holdCandidate = all.FirstOrDefault(candidate => candidate.state == nameof(CommandState.EXECUTING)
+        //        && (candidate.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) || candidate.actionName == nameof(CommandAction.OPEN_HOLD_DEST)));
 
         //        if (holdCandidate != null)
         //        {
