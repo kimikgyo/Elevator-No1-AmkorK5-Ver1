@@ -50,18 +50,18 @@ namespace Elevator_NO1.Services
             // 1) PAUSE면 강제 DOOROPEN
             //
             // 2) 후보 Command(PENDING/REQUEST) 조회 후 우선순위:
-            //    2-1) DOORCLOSE 최우선
-            //         - CLOSE 보내기 전에 HOLD(OPEN_HOLD_*)가 있으면 먼저 COMPLETED 처리
-            //    2-2) OPEN_HOLD_* 있으면 DOOROPEN 메시지를 계속 리턴(유지)
-            //    2-3) MODECHANGE 우선
-            //    2-4) 나머지 FIFO 1개
+            //    2-1) runCommand == null 이고 candidates가 있으면
+            //         - 층이동(SOURCE/DEST) 최우선
+            //         - HOLD 최초 전송
+            //           * SOURCEFLOOR 완료 전 -> OPEN_HOLD_SOURCE 제외
+            //           * DESTINATIONFLOOR 완료 전 -> OPEN_HOLD_DEST 제외
+            //         - MODECHANGE 우선
+            //         - 나머지 FIFO 1개
+            //
+            //    2-2) DOORCLOSE 최우선
+            //    2-3) EXECUTING HOLD 유지
             //
             // 3) 후보가 없으면 ModeCheck 로직 수행
-            //
-            // 디버깅 포인트:
-            // - CLOSE가 들어왔을 때 HOLD를 COMPLETED로 먼저 바꾸는지
-            // - HOLD가 있을 때 매 tick DOOROPEN이 계속 선택되는지
-            // - sendMsg empty가 발생하면 actionName 매핑 누락/오타
             // ============================================================
 
             string sendMsg = string.Empty;
@@ -84,7 +84,10 @@ namespace Elevator_NO1.Services
                 sendMsg = BuildSendMsgByActionName(nameof(CommandAction.PAUSEDOOROPEN));
 
                 if (string.IsNullOrWhiteSpace(sendMsg))
+                {
                     EventLogger.Warn("[Sending][PAUSE] DOOROPEN msg empty (mapping fail)");
+                    return string.Empty;
+                }
 
                 return sendMsg;
             }
@@ -92,19 +95,34 @@ namespace Elevator_NO1.Services
             // ------------------------------------------------------------
             // 2) 후보 Command 조회 (PENDING/REQUEST)
             // ------------------------------------------------------------
-            var all = _repository.Commands.GetAll().OrderBy(c => c.createdAt).ThenBy(t => t.sequence).ToList();
+            var all = _repository.Commands.GetAll()
+                .Where(c => c != null)
+                .OrderBy(c => c.createdAt)
+                .ThenBy(c => c.sequence)
+                .ToList();
+
             var runCommand = all.FirstOrDefault(r => r.state == nameof(CommandState.EXECUTING));
-            var candidates = all.Where(c => c != null && (c.state == nameof(CommandState.PENDING) || c.state == nameof(CommandState.REQUEST))).OrderBy(c => c.createdAt).ThenBy(t => t.sequence).ToList();
 
-            if (all != null && runCommand == null && candidates != null && candidates.Count > 0)
+            var candidates = all
+                .Where(c =>
+                    c != null &&
+                    (c.state == nameof(CommandState.PENDING) ||
+                     c.state == nameof(CommandState.REQUEST)))
+                .OrderBy(c => c.createdAt)
+                .ThenBy(c => c.sequence)
+                .ToList();
+
+            // ------------------------------------------------------------
+            // 2-1) EXECUTING 없고 candidates 있으면 신규 Command 시작
+            // ------------------------------------------------------------
+            if (runCommand == null && candidates != null && candidates.Count > 0)
             {
-                // ------------------------------------------------------------
-                // 2-1) 층이동 최우선
-                // ------------------------------------------------------------
-
+                // --------------------------------------------------------
+                // 2-1-1) 층이동 최우선
+                // --------------------------------------------------------
                 var sourceAndDestMove = candidates.FirstOrDefault(c =>
-                 c.subType == nameof(SubType.SOURCEFLOOR) ||
-                 c.subType == nameof(SubType.DESTINATIONFLOOR));
+                    c.subType == nameof(SubType.SOURCEFLOOR) ||
+                    c.subType == nameof(SubType.DESTINATIONFLOOR));
 
                 if (sourceAndDestMove != null)
                 {
@@ -113,21 +131,50 @@ namespace Elevator_NO1.Services
                     if (string.IsNullOrWhiteSpace(sendMsg))
                     {
                         EventLogger.Warn(
-                            $"[Sending][MODE][SKIP] sendMsg empty. cmdId={sourceAndDestMove.commnadId}, action={sourceAndDestMove.actionName}"
+                            $"[Sending][MOVE][SKIP] sendMsg empty. cmdId={sourceAndDestMove.commnadId}, action={sourceAndDestMove.actionName}"
                         );
                         return string.Empty;
                     }
 
-                    EventLogger.Info($"[Sending][MODE][OK] cmdId={sourceAndDestMove.commnadId}, action={sourceAndDestMove.actionName}");
+                    EventLogger.Info(
+                        $"[Sending][MOVE][OK] cmdId={sourceAndDestMove.commnadId}, action={sourceAndDestMove.actionName}"
+                    );
                     return sendMsg;
                 }
 
-                // ------------------------------------------------------------
-                // 2-2) HOLD 유지 최초 전송 (OPEN_HOLD_*)
-                // ------------------------------------------------------------
-                var holdCandidate_1 = all.FirstOrDefault(c =>
-                    c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) ||
-                    c.actionName == nameof(CommandAction.OPEN_HOLD_DEST));
+                // --------------------------------------------------------
+                // 2-1-2) HOLD 최초 전송
+                // [핵심 반영]
+                // - SOURCEFLOOR 완료 전 -> OPEN_HOLD_SOURCE 제외
+                // - DESTINATIONFLOOR 완료 전 -> OPEN_HOLD_DEST 제외
+                // - 같은 WorkerId 기준으로 완료 여부 판단
+                // --------------------------------------------------------
+                var holdCandidate_1 = candidates.FirstOrDefault(c =>
+                {
+                    if (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE))
+                    {
+                        var sourceFloorCompleted = all.FirstOrDefault(x =>
+                            x != null &&
+                            x.WorkerId == c.WorkerId &&
+                            x.subType == nameof(SubType.SOURCEFLOOR) &&
+                            x.state == nameof(CommandState.COMPLETED));
+
+                        return sourceFloorCompleted != null;
+                    }
+
+                    if (c.actionName == nameof(CommandAction.OPEN_HOLD_DEST))
+                    {
+                        var destFloorCompleted = all.FirstOrDefault(x =>
+                            x != null &&
+                            x.WorkerId == c.WorkerId &&
+                            x.subType == nameof(SubType.DESTINATIONFLOOR) &&
+                            x.state == nameof(CommandState.COMPLETED));
+
+                        return destFloorCompleted != null;
+                    }
+
+                    return false;
+                });
 
                 if (holdCandidate_1 != null)
                 {
@@ -142,11 +189,14 @@ namespace Elevator_NO1.Services
                             return string.Empty;
                         }
 
-                        EventLogger.Info($"[Sending][STATE][OK] (toggle before hold) holdId={holdCandidate_1.commnadId}");
+                        EventLogger.Info(
+                            $"[Sending][STATE][OK] (toggle before hold) holdId={holdCandidate_1.commnadId}"
+                        );
                         return sendMsg;
                     }
 
                     _holdToggleSendStateFirst = true;
+
                     sendMsg = BuildSendMsgByActionName(holdCandidate_1.actionName);
 
                     if (string.IsNullOrWhiteSpace(sendMsg))
@@ -157,13 +207,15 @@ namespace Elevator_NO1.Services
                         return string.Empty;
                     }
 
-                    EventLogger.Info($"[Sending][HOLD][OK] holdId={holdCandidate_1.commnadId}, action={holdCandidate_1.actionName}");
+                    EventLogger.Info(
+                        $"[Sending][HOLD][OK] holdId={holdCandidate_1.commnadId}, action={holdCandidate_1.actionName}"
+                    );
                     return sendMsg;
                 }
 
-                // ------------------------------------------------------------
-                // 2-3) MODECHANGE 우선
-                // ------------------------------------------------------------
+                // --------------------------------------------------------
+                // 2-1-3) MODECHANGE 우선
+                // --------------------------------------------------------
                 var modechange = candidates.FirstOrDefault(c =>
                     c.actionName == nameof(CommandAction.AGVMODE) ||
                     c.actionName == nameof(CommandAction.AGVMODE_CHANGING_NOTAGVMODE) ||
@@ -182,13 +234,15 @@ namespace Elevator_NO1.Services
                         return string.Empty;
                     }
 
-                    EventLogger.Info($"[Sending][MODE][OK] cmdId={modechange.commnadId}, action={modechange.actionName}");
+                    EventLogger.Info(
+                        $"[Sending][MODE][OK] cmdId={modechange.commnadId}, action={modechange.actionName}"
+                    );
                     return sendMsg;
                 }
 
-                // ------------------------------------------------------------
-                // 2-4) 그 외 FIFO 1개
-                // ------------------------------------------------------------
+                // --------------------------------------------------------
+                // 2-1-4) 그 외 FIFO 1개
+                // --------------------------------------------------------
                 var cmd = candidates.FirstOrDefault();
                 if (cmd != null)
                 {
@@ -202,28 +256,26 @@ namespace Elevator_NO1.Services
                         return string.Empty;
                     }
 
-                    EventLogger.Info($"[Sending][OK] cmdId={cmd.commnadId}, action={cmd.actionName}");
+                    EventLogger.Info(
+                        $"[Sending][OK] cmdId={cmd.commnadId}, action={cmd.actionName}"
+                    );
                     return sendMsg;
                 }
             }
+
             // ------------------------------------------------------------
-            // 2-1) CLOSE 최우선
+            // 2-2) CLOSE 최우선
             // ------------------------------------------------------------
             var close = candidates.FirstOrDefault(c => c.actionName == nameof(CommandAction.DOORCLOSE));
             if (close != null)
             {
-                // ------------------------------------------------------------
-                // [중요] Sending에서는 상태(COMPLETED) 변경하지 않는다.
-                // - HOLD 종료는 commmandCompleted()에서 doorClose 완료 이벤트 기준으로 처리한다.
-                // - 여기서는 HOLD가 살아있는지 "조회/로그"만 남긴다.
-                // ------------------------------------------------------------
                 var holdAlive = all.FirstOrDefault(c =>
-                    c != null
-                    && (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE)
-                     || c.actionName == nameof(CommandAction.OPEN_HOLD_DEST))
-                    && (c.state == nameof(CommandState.PENDING)
-                     || c.state == nameof(CommandState.REQUEST)
-                     || c.state == nameof(CommandState.EXECUTING))
+                    c != null &&
+                    (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) ||
+                     c.actionName == nameof(CommandAction.OPEN_HOLD_DEST)) &&
+                    (c.state == nameof(CommandState.PENDING) ||
+                     c.state == nameof(CommandState.REQUEST) ||
+                     c.state == nameof(CommandState.EXECUTING))
                 );
 
                 if (holdAlive != null)
@@ -234,7 +286,6 @@ namespace Elevator_NO1.Services
                     );
                 }
 
-                // (B) CLOSE 전송 메시지 생성
                 sendMsg = BuildSendMsgByActionName(close.actionName);
 
                 if (string.IsNullOrWhiteSpace(sendMsg))
@@ -248,12 +299,13 @@ namespace Elevator_NO1.Services
             }
             else
             {
-                // ------------------------------------------------------------
-                // 2-2) HOLD 유지 (OPEN_HOLD_*)
-                // ------------------------------------------------------------
-
-                var holdCandidate = all.FirstOrDefault(c => c.state == nameof(CommandState.EXECUTING)
-                && (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) || c.actionName == nameof(CommandAction.OPEN_HOLD_DEST)));
+                // --------------------------------------------------------
+                // 2-3) EXECUTING HOLD 유지
+                // --------------------------------------------------------
+                var holdCandidate = all.FirstOrDefault(c =>
+                    c.state == nameof(CommandState.EXECUTING) &&
+                    (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) ||
+                     c.actionName == nameof(CommandAction.OPEN_HOLD_DEST)));
 
                 if (holdCandidate != null)
                 {
@@ -268,7 +320,9 @@ namespace Elevator_NO1.Services
                             return string.Empty;
                         }
 
-                        EventLogger.Info($"[Sending][STATE][OK] (toggle before hold) holdId={holdCandidate.commnadId}");
+                        EventLogger.Info(
+                            $"[Sending][STATE][OK] (toggle before hold) holdId={holdCandidate.commnadId}"
+                        );
                         return sendMsg;
                     }
 
@@ -284,10 +338,13 @@ namespace Elevator_NO1.Services
                         return string.Empty;
                     }
 
-                    EventLogger.Info($"[Sending][HOLD][OK] holdId={holdCandidate.commnadId}, action={holdCandidate.actionName}");
+                    EventLogger.Info(
+                        $"[Sending][HOLD][OK] holdId={holdCandidate.commnadId}, action={holdCandidate.actionName}"
+                    );
                     return sendMsg;
                 }
             }
+
             // ------------------------------------------------------------
             // 3) 후보 Command가 없을 때 ModeCheck 로직
             // ------------------------------------------------------------
@@ -328,6 +385,293 @@ namespace Elevator_NO1.Services
             EventLogger.Warn($"[Sending][DEFAULT] unknown elevator.mode={elevator.mode}. skip.");
             return string.Empty;
         }
+        //private string SendingElevator_Control()
+        //{
+        //    // ============================================================
+        //    // [Sending 정책(HOLD 포함, 레이블/goto 없음)]
+        //    //
+        //    // 0) ElevatorStatus 없으면 스킵
+        //    // 1) PAUSE면 강제 DOOROPEN
+        //    //
+        //    // 2) 후보 Command(PENDING/REQUEST) 조회 후 우선순위:
+        //    //    2-1) DOORCLOSE 최우선
+        //    //         - CLOSE 보내기 전에 HOLD(OPEN_HOLD_*)가 있으면 먼저 COMPLETED 처리
+        //    //    2-2) OPEN_HOLD_* 있으면 DOOROPEN 메시지를 계속 리턴(유지)
+        //    //    2-3) MODECHANGE 우선
+        //    //    2-4) 나머지 FIFO 1개
+        //    //
+        //    // 3) 후보가 없으면 ModeCheck 로직 수행
+        //    //
+        //    // 디버깅 포인트:
+        //    // - CLOSE가 들어왔을 때 HOLD를 COMPLETED로 먼저 바꾸는지
+        //    // - HOLD가 있을 때 매 tick DOOROPEN이 계속 선택되는지
+        //    // - sendMsg empty가 발생하면 actionName 매핑 누락/오타
+        //    // ============================================================
+
+        //    string sendMsg = string.Empty;
+
+        //    // ------------------------------------------------------------
+        //    // 0) ElevatorStatus 조회
+        //    // ------------------------------------------------------------
+        //    var elevator = _repository.ElevatorStatus.GetAll().FirstOrDefault();
+        //    if (elevator == null)
+        //    {
+        //        EventLogger.Warn("[Sending][SKIP] ElevatorStatus is null");
+        //        return string.Empty;
+        //    }
+
+        //    // ------------------------------------------------------------
+        //    // 1) PAUSE면 강제 DOOROPEN
+        //    // ------------------------------------------------------------
+        //    if (elevator.state == nameof(State.PAUSE))
+        //    {
+        //        sendMsg = BuildSendMsgByActionName(nameof(CommandAction.PAUSEDOOROPEN));
+
+        //        if (string.IsNullOrWhiteSpace(sendMsg))
+        //            EventLogger.Warn("[Sending][PAUSE] DOOROPEN msg empty (mapping fail)");
+
+        //        return sendMsg;
+        //    }
+
+        //    // ------------------------------------------------------------
+        //    // 2) 후보 Command 조회 (PENDING/REQUEST)
+        //    // ------------------------------------------------------------
+        //    var all = _repository.Commands.GetAll().OrderBy(c => c.createdAt).ThenBy(t => t.sequence).ToList();
+        //    var runCommand = all.FirstOrDefault(r => r.state == nameof(CommandState.EXECUTING));
+        //    var candidates = all.Where(c => c != null && (c.state == nameof(CommandState.PENDING) || c.state == nameof(CommandState.REQUEST))).OrderBy(c => c.createdAt).ThenBy(t => t.sequence).ToList();
+
+        //    if (all != null && runCommand == null && candidates != null && candidates.Count > 0)
+        //    {
+        //        // ------------------------------------------------------------
+        //        // 2-1) 층이동 최우선
+        //        // ------------------------------------------------------------
+
+        //        var sourceAndDestMove = candidates.FirstOrDefault(c =>
+        //         c.subType == nameof(SubType.SOURCEFLOOR) ||
+        //         c.subType == nameof(SubType.DESTINATIONFLOOR));
+
+        //        if (sourceAndDestMove != null)
+        //        {
+        //            sendMsg = BuildSendMsgByActionName(sourceAndDestMove.actionName);
+
+        //            if (string.IsNullOrWhiteSpace(sendMsg))
+        //            {
+        //                EventLogger.Warn(
+        //                    $"[Sending][MODE][SKIP] sendMsg empty. cmdId={sourceAndDestMove.commnadId}, action={sourceAndDestMove.actionName}"
+        //                );
+        //                return string.Empty;
+        //            }
+
+        //            EventLogger.Info($"[Sending][MODE][OK] cmdId={sourceAndDestMove.commnadId}, action={sourceAndDestMove.actionName}");
+        //            return sendMsg;
+        //        }
+
+        //        // ------------------------------------------------------------
+        //        // 2-2) HOLD 유지 최초 전송 (OPEN_HOLD_*)
+        //        // ------------------------------------------------------------
+        //        var holdCandidate_1 = all.FirstOrDefault(c =>
+        //            c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) ||
+        //            c.actionName == nameof(CommandAction.OPEN_HOLD_DEST));
+
+        //        if (holdCandidate_1 != null)
+        //        {
+        //            if (_holdToggleSendStateFirst)
+        //            {
+        //                _holdToggleSendStateFirst = false;
+
+        //                sendMsg = BuildSendMsgByActionName(nameof(CommandAction.State));
+        //                if (string.IsNullOrWhiteSpace(sendMsg))
+        //                {
+        //                    EventLogger.Warn("[Sending][STATE][SKIP] sendMsg empty (toggle)");
+        //                    return string.Empty;
+        //                }
+
+        //                EventLogger.Info($"[Sending][STATE][OK] (toggle before hold) holdId={holdCandidate_1.commnadId}");
+        //                return sendMsg;
+        //            }
+
+        //            _holdToggleSendStateFirst = true;
+        //            sendMsg = BuildSendMsgByActionName(holdCandidate_1.actionName);
+
+        //            if (string.IsNullOrWhiteSpace(sendMsg))
+        //            {
+        //                EventLogger.Warn(
+        //                    $"[Sending][HOLD][SKIP] sendMsg empty. holdId={holdCandidate_1.commnadId}, action={holdCandidate_1.actionName}"
+        //                );
+        //                return string.Empty;
+        //            }
+
+        //            EventLogger.Info($"[Sending][HOLD][OK] holdId={holdCandidate_1.commnadId}, action={holdCandidate_1.actionName}");
+        //            return sendMsg;
+        //        }
+
+        //        // ------------------------------------------------------------
+        //        // 2-3) MODECHANGE 우선
+        //        // ------------------------------------------------------------
+        //        var modechange = candidates.FirstOrDefault(c =>
+        //            c.actionName == nameof(CommandAction.AGVMODE) ||
+        //            c.actionName == nameof(CommandAction.AGVMODE_CHANGING_NOTAGVMODE) ||
+        //            c.actionName == nameof(CommandAction.NOTAGVMODE) ||
+        //            c.actionName == nameof(CommandAction.NOTAGVMODE_CHANGING_AGVMODE));
+
+        //        if (modechange != null)
+        //        {
+        //            sendMsg = BuildSendMsgByActionName(modechange.actionName);
+
+        //            if (string.IsNullOrWhiteSpace(sendMsg))
+        //            {
+        //                EventLogger.Warn(
+        //                    $"[Sending][MODE][SKIP] sendMsg empty. cmdId={modechange.commnadId}, action={modechange.actionName}"
+        //                );
+        //                return string.Empty;
+        //            }
+
+        //            EventLogger.Info($"[Sending][MODE][OK] cmdId={modechange.commnadId}, action={modechange.actionName}");
+        //            return sendMsg;
+        //        }
+
+        //        // ------------------------------------------------------------
+        //        // 2-4) 그 외 FIFO 1개
+        //        // ------------------------------------------------------------
+        //        var cmd = candidates.FirstOrDefault();
+        //        if (cmd != null)
+        //        {
+        //            sendMsg = BuildSendMsgByActionName(cmd.actionName);
+
+        //            if (string.IsNullOrWhiteSpace(sendMsg))
+        //            {
+        //                EventLogger.Warn(
+        //                    $"[Sending][SKIP] sendMsg empty. cmdId={cmd.commnadId}, action={cmd.actionName}"
+        //                );
+        //                return string.Empty;
+        //            }
+
+        //            EventLogger.Info($"[Sending][OK] cmdId={cmd.commnadId}, action={cmd.actionName}");
+        //            return sendMsg;
+        //        }
+        //    }
+        //    // ------------------------------------------------------------
+        //    // 2-1) CLOSE 최우선
+        //    // ------------------------------------------------------------
+        //    var close = candidates.FirstOrDefault(c => c.actionName == nameof(CommandAction.DOORCLOSE));
+        //    if (close != null)
+        //    {
+        //        // ------------------------------------------------------------
+        //        // [중요] Sending에서는 상태(COMPLETED) 변경하지 않는다.
+        //        // - HOLD 종료는 commmandCompleted()에서 doorClose 완료 이벤트 기준으로 처리한다.
+        //        // - 여기서는 HOLD가 살아있는지 "조회/로그"만 남긴다.
+        //        // ------------------------------------------------------------
+        //        var holdAlive = all.FirstOrDefault(c =>
+        //            c != null
+        //            && (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE)
+        //             || c.actionName == nameof(CommandAction.OPEN_HOLD_DEST))
+        //            && (c.state == nameof(CommandState.PENDING)
+        //             || c.state == nameof(CommandState.REQUEST)
+        //             || c.state == nameof(CommandState.EXECUTING))
+        //        );
+
+        //        if (holdAlive != null)
+        //        {
+        //            EventLogger.Info(
+        //                $"[Sending][CLOSE] HOLD alive (will complete on protocol). " +
+        //                $"holdId={holdAlive.commnadId}, holdState={holdAlive.state}, closeId={close.commnadId}"
+        //            );
+        //        }
+
+        //        // (B) CLOSE 전송 메시지 생성
+        //        sendMsg = BuildSendMsgByActionName(close.actionName);
+
+        //        if (string.IsNullOrWhiteSpace(sendMsg))
+        //        {
+        //            EventLogger.Warn($"[Sending][CLOSE][SKIP] sendMsg empty. closeId={close.commnadId}");
+        //            return string.Empty;
+        //        }
+
+        //        EventLogger.Info($"[Sending][CLOSE][OK] closeId={close.commnadId}");
+        //        return sendMsg;
+        //    }
+        //    else
+        //    {
+        //        // ------------------------------------------------------------
+        //        // 2-2) HOLD 유지 (OPEN_HOLD_*)
+        //        // ------------------------------------------------------------
+
+        //        var holdCandidate = all.FirstOrDefault(c => c.state == nameof(CommandState.EXECUTING)
+        //        && (c.actionName == nameof(CommandAction.OPEN_HOLD_SOURCE) || c.actionName == nameof(CommandAction.OPEN_HOLD_DEST)));
+
+        //        if (holdCandidate != null)
+        //        {
+        //            if (_holdToggleSendStateFirst)
+        //            {
+        //                _holdToggleSendStateFirst = false;
+
+        //                sendMsg = BuildSendMsgByActionName(nameof(CommandAction.State));
+        //                if (string.IsNullOrWhiteSpace(sendMsg))
+        //                {
+        //                    EventLogger.Warn("[Sending][STATE][SKIP] sendMsg empty (toggle)");
+        //                    return string.Empty;
+        //                }
+
+        //                EventLogger.Info($"[Sending][STATE][OK] (toggle before hold) holdId={holdCandidate.commnadId}");
+        //                return sendMsg;
+        //            }
+
+        //            _holdToggleSendStateFirst = true;
+
+        //            sendMsg = BuildSendMsgByActionName(holdCandidate.actionName);
+
+        //            if (string.IsNullOrWhiteSpace(sendMsg))
+        //            {
+        //                EventLogger.Warn(
+        //                    $"[Sending][HOLD][SKIP] sendMsg empty. holdId={holdCandidate.commnadId}, action={holdCandidate.actionName}"
+        //                );
+        //                return string.Empty;
+        //            }
+
+        //            EventLogger.Info($"[Sending][HOLD][OK] holdId={holdCandidate.commnadId}, action={holdCandidate.actionName}");
+        //            return sendMsg;
+        //        }
+        //    }
+        //    // ------------------------------------------------------------
+        //    // 3) 후보 Command가 없을 때 ModeCheck 로직
+        //    // ------------------------------------------------------------
+        //    if (ModeCheck == false)
+        //    {
+        //        sendMsg = BuildSendMsgByActionName(nameof(CommandAction.State));
+        //        ModeCheck = true;
+        //        return sendMsg;
+        //    }
+
+        //    string mode = null;
+        //    switch (elevator.mode)
+        //    {
+        //        case nameof(Mode.AGVMODE):
+        //            mode = nameof(Mode.AGVMODE);
+        //            break;
+
+        //        case nameof(Mode.NOTAGVMODE):
+        //            mode = nameof(Mode.NOTAGVMODE);
+        //            break;
+
+        //        case nameof(Mode.AGVMODE_CHANGING_NOTAGVMODE):
+        //            mode = nameof(Mode.AGVMODE_CHANGING_NOTAGVMODE);
+        //            break;
+
+        //        case nameof(Mode.NOTAGVMODE_CHANGING_AGVMODE):
+        //            mode = nameof(Mode.NOTAGVMODE_CHANGING_AGVMODE);
+        //            break;
+        //    }
+
+        //    if (mode != null)
+        //    {
+        //        sendMsg = BuildSendMsgByActionName(mode);
+        //        ModeCheck = false;
+        //        return sendMsg;
+        //    }
+
+        //    EventLogger.Warn($"[Sending][DEFAULT] unknown elevator.mode={elevator.mode}. skip.");
+        //    return string.Empty;
+        //}
 
         /// <summary>
         /// actionName -> 엘리베이터 송신 프로토콜 문자열 생성 (HOLD 포함 버전)

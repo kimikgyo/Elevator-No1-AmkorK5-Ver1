@@ -196,7 +196,7 @@ try
     // 컨트롤러 엔드포인트 매핑
     app.MapControllers();
 
-    EventLogger.Info($"=== Program Start ===");
+    EventLogger.Info($"=== Program Start === UpdateAt = 20260309");
     app.Run();
 }
 catch (Exception ex)
